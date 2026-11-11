@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#131c26">
+    <link rel="icon" href="data:,">
+    <title>Zombots · Arena de testes</title>
+    <style>
+        :root { color-scheme: dark; font-family: system-ui, sans-serif; color: #eef3f5; }
+        * { box-sizing: border-box; }
+        body { margin: 0; overflow: hidden; background: #131c26; }
+        #game-canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; }
+        .hud { position: fixed; inset: 0; pointer-events: none; padding: 24px 28px; }
+        header { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+        .brand { font-weight: 800; font-size: 20px; letter-spacing: .12em; }
+        .brand span { color: #ff675c; }
+        .subtitle { margin-top: 5px; color: #becbd1; font-size: 12px; }
+        #status { font: 11px ui-monospace, monospace; letter-spacing: .12em; border: 1px solid #ffffff30; padding: 8px 12px; border-radius: 4px; background: #131c26b3; }
+        .controls { position: absolute; bottom: 22px; left: 28px; right: 28px; margin: 0; color: #e1e9ed; font-size: 12px; text-shadow: 0 1px 4px #000; }
+        #crosshair { position: fixed; left: 50%; top: 50%; width: 5px; height: 5px; transform: translate(-50%, -50%); background: #fff; border-radius: 50%; box-shadow: 0 0 2px 1px #0008; pointer-events: none; }
+        #overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: #0b131bb3; }
+        [hidden] { display: none !important; }
+        .panel { width: min(100%, 430px); padding: 32px; background: #18232ef2; border: 1px solid #60717e66; border-radius: 12px; box-shadow: 0 20px 80px #0005; }
+        .eyebrow { margin: 0 0 14px; font: 11px ui-monospace, monospace; letter-spacing: .13em; color: #ff8b80; }
+        h1 { margin: 0 0 14px; font-size: clamp(24px, 4vw, 32px); letter-spacing: -.04em; }
+        #overlay-description { color: #c2cdd6; font-size: 14px; line-height: 1.65; margin: 0 0 24px; }
+        dl { display: grid; grid-template-columns: 1fr auto; gap: 12px 20px; margin: 0 0 28px; font-size: 13px; }
+        dt { color: #aebdc7; }
+        dd { margin: 0; text-align: right; }
+        kbd { font: 12px ui-monospace, monospace; }
+        button { width: 100%; border: 0; border-radius: 6px; padding: 13px 18px; background: #eb5b50; color: #fff; font: 600 14px system-ui, sans-serif; cursor: pointer; }
+        button:hover { background: #f47165; }
+        button:focus-visible { outline: 3px solid white; outline-offset: 4px; }
+        button:disabled { opacity: .5; cursor: wait; }
+        .note { margin: 14px 0 0; color: #9cafbb; font-size: 11px; text-align: center; }
+        noscript { position: fixed; inset: 0; z-index: 2; background: #18232e; padding: 40px; }
+        @media (max-width: 500px) { .hud { padding: 18px; } .controls { left: 18px; right: 18px; font-size: 11px; } .panel { padding: 24px; } }
+    </style>
+</head>
+<body>
+    <canvas id="game-canvas" aria-label="Arena 3D em primeira pessoa">Seu navegador precisa oferecer suporte a WebGL.</canvas>
+    <div class="hud">
+        <header>
+            <div><div class="brand">ZOM<span>BOTS</span></div><div class="subtitle">UECE · Arena de testes</div></div>
+            <span id="status" role="status">CARREGANDO</span>
+        </header>
+        <p class="controls">WASD / setas · mover &nbsp; Mouse · olhar &nbsp; Espaço · correr &nbsp; P / Esc · pausar</p>
+    </div>
+    <div id="crosshair" hidden aria-hidden="true"></div>
+    <section id="overlay" aria-labelledby="overlay-title">
+        <div class="panel">
+            <p class="eyebrow">PROTÓTIPO / PRIMEIRA PESSOA</p>
+            <h1 id="overlay-title">Preparando a arena</h1>
+            <p id="overlay-description">Carregando o mapa e o jogador…</p>
+            <dl>
+                <dt>Mover</dt><dd><kbd>W A S D</kbd> / <kbd>↑ ← ↓ →</kbd></dd>
+                <dt>Olhar</dt><dd>Mouse</dd>
+                <dt>Correr</dt><dd><kbd>Espaço</kbd> segurado</dd>
+                <dt>Pausar / retomar</dt><dd><kbd>P</kbd></dd>
+                <dt>Liberar o cursor</dt><dd><kbd>Esc</kbd></dd>
+            </dl>
+            <button id="enter-button" type="button" disabled>Entrar</button>
+            <p class="note">Use teclado e mouse. Clique para capturar o cursor.</p>
+        </div>
+    </section>
+    <noscript>Ative o JavaScript para iniciar o protótipo Zombots.</noscript>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

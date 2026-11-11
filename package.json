@@ -1,0 +1,8 @@
+{
+  "name": "zombots-uece-edition-2-the-revenge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
