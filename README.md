@@ -26,7 +26,8 @@ Não há dependências externas, CDN, instalação de pacotes ou etapa de build.
 | --- | --- |
 | Mover para frente/trás e lateralmente | `WASD` ou setas |
 | Olhar | Mouse |
-| Correr | Segurar `Espaço` enquanto se move |
+| Correr | Segurar `Shift` enquanto se move |
+| Pular | `Espaço` |
 | Pausar / retomar | `P` |
 | Liberar o cursor e pausar | `Esc` |
 | Entrar / retomar capturando o mouse | Botão na tela |
@@ -58,6 +59,7 @@ zombots-uece-edition-2-the-revenge/
 │   └── game/
 │       ├── game_main.js     # Inicialização, estados, atualização e renderização
 │       ├── player.js        # Posição, movimento, corpo, colisão e vínculo da câmera
+│       ├── enemy.js         # Inimigos visuais: zumbi, robô e Zombot
 │       └── level.js         # Geometria e colisores derivados dos dados do mapa
 ├── assets/
 │   ├── player/
@@ -89,7 +91,7 @@ O colisor é independente da malha: uma AABB de aproximadamente **1,13 × 1,80 �
 
 `assets/map/test_level.json` define uma arena de **20 × 20 unidades**, centrada na origem, com chão em Y = 0, quatro paredes de 3 unidades de altura e dois blocos internos. O spawn é `(0, 0, 6)`, olhando inicialmente para −Z. A grade do chão tem espaçamento de uma unidade.
 
-Paredes e obstáculos geram malhas e colisores a partir das mesmas dimensões. Para editar o nível, altere o JSON e recarregue a página. Mantenha dimensões positivas, obstáculos apoiados no chão e o spawn livre dentro da arena. Nesta versão, o chão define a altura fixa de navegação; não existe simulação de gravidade ou suporte a plataformas.
+Paredes e obstáculos geram malhas e colisores a partir das mesmas dimensões. Para editar o nível, altere o JSON e recarregue a página. Mantenha dimensões positivas, obstáculos apoiados no chão e o spawn livre dentro da arena. O chão é a referência do salto: a gravidade traz o jogador de volta a Y = 0; não há suporte a plataformas.
 
 ### Substituir o placeholder pelo modelo do Blender
 
@@ -121,5 +123,5 @@ Para conferir a integração no navegador:
 
 ## Limites desta versão
 
-O protótipo não inclui combate, inimigos, hordas, vida, áudio, texturas, salto, gravidade, animações do robô ou controles touch. A tecla X não tem ação nesta etapa. Falhas de carregamento ou de WebGL são exibidas na tela; em caso de perda do contexto gráfico, recarregue a página.
+O protótipo inclui três inimigos: zumbi verde, robô azul e Zombot preto. Eles usam geometria construída manualmente, perseguem o jogador e possuem colisores AABB contra o jogador, paredes, obstáculos e outros inimigos. Eles param antes do contato e não possuem dano, vida ou golpes nesta etapa. Falhas de carregamento ou de WebGL são exibidas na tela; em caso de perda do contexto gráfico, recarregue a página.
 

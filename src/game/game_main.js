@@ -1,10 +1,12 @@
 import { initGL, resizeCanvas } from '../engine/gl.js';
 import { Shaders } from '../engine/shaders.js';
 import { OBJLoader } from '../engine/obj_loader.js';
+import { Mesh } from '../engine/mesh.js';
 import { InputHandler } from '../engine/input.js';
 import { intersectsAABB } from '../engine/collision.js';
 import { Level } from './level.js';
 import { Player } from './player.js';
+import { Enemy } from './enemy.js';
 
 export class Game {
     constructor(canvas, ui) {
@@ -29,6 +31,12 @@ export class Game {
         ]);
         this.level = level;
         this.player = new Player(level.spawn, playerMesh);
+        this.enemyMesh = Mesh.box(this.gl);
+        this.enemies = [
+            new Enemy('Zumbi', { x: -6, y: 0, z: -5 }, [0.12, 0.68, 0.22, 1]),
+            new Enemy('Robô', { x: 6, y: 0, z: -5 }, [0.12, 0.38, 0.9, 1]),
+            new Enemy('Zombot', { x: 0, y: 0, z: -7 }, [0.04, 0.04, 0.05, 1]),
+        ];
         if (level.colliders.some(box => intersectsAABB(this.player.collider, box))) {
             throw new Error('A posição inicial do jogador está dentro de um obstáculo.');
         }
@@ -48,7 +56,7 @@ export class Game {
         this.canvas.addEventListener('click', () => this.enter(), options);
         this.state = 'ready';
         this.ui.button.disabled = false;
-        this.showOverlay('Arena de testes', 'Explore o mapa. Olhe para baixo para ver o corpo provisório do jogador.');
+        this.showOverlay('Arena de testes', 'Explore o mapa com Shift para correr e Espaço para pular. Encontre o zumbi verde, o robô azul e o Zombot preto.');
         this.lastTime = performance.now();
         this.animationFrame = requestAnimationFrame(this.frame);
     }
@@ -94,8 +102,8 @@ export class Game {
         const dt = Math.max(0, Math.min((time - this.lastTime) / 1000, 0.05));
         this.lastTime = time;
         try {
-            if (this.state === 'playing') this.player.update(this.input, dt, this.level.colliders);
-            this.render();
+            if (this.state === 'playing') this.update(dt);
+            this.render(time / 1000);
         } catch (error) {
             this.fail(error);
             return;
@@ -103,7 +111,20 @@ export class Game {
         this.animationFrame = requestAnimationFrame(this.frame);
     }
 
-    render() {
+    update(dt) {
+        // Ambos os lados recebem os mesmos AABBs, portanto ninguém atravessa o outro.
+        this.player.update(this.input, dt, [...this.level.colliders, ...this.enemies.map(enemy => enemy.collider)]);
+        for (const enemy of this.enemies) {
+            const obstacles = [
+                ...this.level.colliders,
+                this.player.collider,
+                ...this.enemies.filter(other => other !== enemy).map(other => other.collider),
+            ];
+            enemy.update(dt, this.player.position, obstacles);
+        }
+    }
+
+    render(elapsed) {
         const gl = this.gl;
         resizeCanvas(gl);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -112,6 +133,7 @@ export class Game {
         gl.uniformMatrix4fv(this.programInfo.uniforms.u_projection, false,
             this.player.camera.getProjectionMatrix(gl.canvas.width / gl.canvas.height));
         this.level.draw(this.programInfo);
+        for (const enemy of this.enemies) enemy.draw(this.enemyMesh, this.programInfo, elapsed);
         this.player.draw(this.programInfo);
     }
 
@@ -131,6 +153,7 @@ export class Game {
         this.input?.dispose();
         this.level?.dispose();
         this.player?.mesh.dispose();
+        this.enemyMesh?.dispose();
         if (this.programInfo) this.gl.deleteProgram(this.programInfo.program);
     }
 }
