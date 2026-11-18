@@ -6,6 +6,7 @@ import { FPSCamera } from '../src/engine/camera.js';
 import { createAABB, intersectsAABB, moveAABB } from '../src/engine/collision.js';
 import { OBJLoader } from '../src/engine/obj_loader.js';
 import { Player } from '../src/game/player.js';
+import { Enemy } from '../src/game/enemy.js';
 
 const near = (actual, expected, epsilon = 1e-8) => assert.ok(Math.abs(actual - expected) < epsilon, `${actual} ≠ ${expected}`);
 const input = (keys = [], mouse = { x: 0, y: 0 }) => ({ isPressed: key => keys.includes(key), getMouseDelta: () => mouse });
@@ -29,7 +30,7 @@ test('movimento mantém velocidade em 30/60/144 FPS e normaliza a diagonal', () 
 
 test('corrida, comandos opostos e aliases não somam velocidade', () => {
     const runner = new Player(spawn, null);
-    runner.update(input(['KeyW', 'ArrowUp', 'Space']), 1, []);
+    runner.update(input(['KeyW', 'ArrowUp', 'ShiftLeft', 'ShiftRight']), 1, []);
     near(runner.position.z, -runner.runSpeed);
     const idle = new Player(spawn, null);
     idle.update(input(['KeyW', 'KeyS', 'KeyA', 'KeyD']), 1, []);
@@ -100,6 +101,18 @@ test('câmera permanece junto do jogador após bloquear a movimentação', () =>
     near(player.position.x, wall.min.x - player.halfSize.x);
     near(player.camera.position.x, player.position.x);
     assert.equal(intersectsAABB(player.collider, wall), false);
+});
+
+test('inimigo persegue sem atravessar jogador ou parede', () => {
+    const enemy = new Enemy('Zumbi', { x: 0, y: 0, z: -4 }, [0, 1, 0, 1]);
+    const player = new Player(spawn, null);
+    enemy.update(1, player.position, [player.collider]);
+    assert.ok(enemy.position.z > -4);
+    assert.equal(intersectsAABB(enemy.collider, player.collider), false);
+    const barrier = createAABB({ x: 0, y: 1.5, z: -2 }, { x: 2, y: 1.5, z: 0.1 });
+    for (let i = 0; i < 10; i++) enemy.update(1, player.position, [player.collider, barrier]);
+    assert.equal(intersectsAABB(enemy.collider, barrier), false);
+    assert.ok(enemy.collider.max.z <= barrier.min.z);
 });
 
 test('cubo OBJ/MTL real tem 12 triângulos, material vermelho e faces externas', async () => {
