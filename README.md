@@ -68,9 +68,10 @@ zombots-uece-edition-2-the-revenge/
 │   │   ├── cube.obj         # Cubo unitário, seis faces e doze triângulos
 │   │   └── cube.mtl         # Material vermelho
 │   └── map/
-│       └── test_level.json # Arena, obstáculos, cores e posição inicial
+│       └── test_level.json # Campus: superfícies, prédios, árvores e spawn
 └── tests/
-    └── prototype.test.js    # Movimento, câmera, colisões, matrizes e OBJ/MTL
+    ├── prototype.test.js    # Movimento, câmera, colisões, matrizes e OBJ/MTL
+    └── level.test.js        # Altura do chão, calçadas, spawn e validação do mapa
 ```
 
 ### Jogador e câmera
@@ -91,9 +92,12 @@ O colisor é independente da malha: uma AABB de aproximadamente **1,13 × 1,80 �
 
 ### Mapa
 
-`assets/map/test_level.json` define uma arena de **20 × 20 unidades**, centrada na origem, com chão em Y = 0, quatro paredes de 3 unidades de altura e dois blocos internos. O spawn é `(0, 0, 6)`, olhando inicialmente para −Z. A grade do chão tem espaçamento de uma unidade.
+`assets/map/test_level.json` descreve o campus (100 × 100 unidades, centrado na origem, quatro paredes de 3 unidades). Há dois tipos de elemento:
 
-Paredes e obstáculos geram malhas e colisores a partir das mesmas dimensões. Para editar o nível, altere o JSON e recarregue a página. Mantenha dimensões positivas, obstáculos apoiados no chão e o spawn livre dentro da arena. Nesta versão, o chão define a altura fixa de navegação; não existe simulação de gravidade ou suporte a plataformas.
+- **Superfícies (`surfaces`)**: mato (o próprio `floorColor`), asfalto, calçada, estacionamento, ilha da rotatória e faixas pintadas. **Não colidem**; definem a *altura do chão* no ponto. O jogador acompanha essa altura e sobe o meio-fio (calçada = 0,15; asfalto = 0,03). Desníveis maiores que `maxStep` (0,35) em `player.js` funcionam como parede.
+- **Obstáculos (`obstacles`, `trees`, paredes)**: geram colisores AABB. Prédios usam `"rect": [x0, z0, x1, z1]` e `"height"`; árvores são `[x, z, escala]` (só o tronco colide, a copa fica acima dos olhos).
+
+Formas: `"rect": [x0, z0, x1, z1]` ou `"circle": [cx, cz, raio]`. As cores e alturas ficam em `materials`; uma superfície com `"decal": true` (faixas) não altera a altura do chão. Onde duas superfícies se sobrepõem vale a mais alta, igual ao que aparece na tela. Para editar, altere o JSON e recarregue. Mantenha o spawn livre; o `y` dele é ajustado ao chão automaticamente.
 
 ### Substituir o placeholder pelo modelo do Blender
 

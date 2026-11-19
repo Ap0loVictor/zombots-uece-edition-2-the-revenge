@@ -13,6 +13,8 @@ export class Player {
         this.runSpeed = 5.5;
         this.bodySize = 0.8;
         this.bodyHeight = 0.8;
+        this.maxStep = 0.35;      // maior degrau que dá para subir (meio-fio ≈ 0,12)
+        this.stepSmoothing = 18;  // quão rápido o corpo acompanha o desnível (1/s)
         // Abrange os cantos do cubo mesmo quando ele gira; a câmera também fica protegida.
         this.halfSize = { x: this.bodySize / Math.SQRT2, y: 0.9, z: this.bodySize / Math.SQRT2 };
         this.syncCamera();
@@ -22,7 +24,8 @@ export class Player {
         return createAABB({ ...this.position, y: this.position.y + this.halfSize.y }, this.halfSize);
     }
 
-    update(input, dt, colliders) {
+    // groundHeightAt(x, z) devolve a altura do chão no ponto (calçada, asfalto…).
+    update(input, dt, colliders, groundHeightAt = () => 0) {
         this.camera.look(input.getMouseDelta());
         const forward = Number(input.isPressed('KeyW') || input.isPressed('ArrowUp')) -
             Number(input.isPressed('KeyS') || input.isPressed('ArrowDown'));
@@ -40,10 +43,27 @@ export class Player {
             };
             const center = moveAABB({ ...this.position, y: this.position.y + this.halfSize.y },
                 this.halfSize, displacement, colliders);
-            this.position.x = center.x;
-            this.position.z = center.z;
+            // Desnível alto demais funciona como parede; tenta deslizar por um eixo de cada vez.
+            const canStand = (x, z) => groundHeightAt(x, z) - this.position.y <= this.maxStep;
+            if (canStand(center.x, center.z)) {
+                this.position.x = center.x;
+                this.position.z = center.z;
+            } else if (canStand(center.x, this.position.z)) {
+                this.position.x = center.x;
+            } else if (canStand(this.position.x, center.z)) {
+                this.position.z = center.z;
+            }
         }
+        this.followGround(dt, groundHeightAt);
         this.syncCamera();
+    }
+
+    // Sobe/desce suavemente até a altura do chão (sem gravidade nem pulo).
+    followGround(dt, groundHeightAt) {
+        const target = groundHeightAt(this.position.x, this.position.z);
+        const difference = target - this.position.y;
+        if (Math.abs(difference) < 1e-4) this.position.y = target;
+        else this.position.y += difference * (1 - Math.exp(-this.stepSmoothing * dt));
     }
 
     syncCamera() {

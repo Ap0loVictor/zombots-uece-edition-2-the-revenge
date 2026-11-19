@@ -29,6 +29,9 @@ export class Game {
         ]);
         this.level = level;
         this.player = new Player(level.spawn, playerMesh);
+        this.groundHeightAt = (x, z) => this.level.groundHeight(x, z);
+        this.player.position.y = this.groundHeightAt(this.player.position.x, this.player.position.z);
+        this.player.syncCamera();
         if (level.colliders.some(box => intersectsAABB(this.player.collider, box))) {
             throw new Error('A posição inicial do jogador está dentro de um obstáculo.');
         }
@@ -48,7 +51,7 @@ export class Game {
         this.canvas.addEventListener('click', () => this.enter(), options);
         this.state = 'ready';
         this.ui.button.disabled = false;
-        this.showOverlay('Arena de testes', 'Explore o mapa. Olhe para baixo para ver o corpo provisório do jogador.');
+        this.showOverlay('Campus UECE', 'Explore o campus. Olhe para baixo para ver o corpo provisório do jogador.');
         this.lastTime = performance.now();
         this.animationFrame = requestAnimationFrame(this.frame);
     }
@@ -94,7 +97,7 @@ export class Game {
         const dt = Math.max(0, Math.min((time - this.lastTime) / 1000, 0.05));
         this.lastTime = time;
         try {
-            if (this.state === 'playing') this.player.update(this.input, dt, this.level.colliders);
+            if (this.state === 'playing') this.player.update(this.input, dt, this.level.colliders, this.groundHeightAt);
             this.render();
         } catch (error) {
             this.fail(error);
