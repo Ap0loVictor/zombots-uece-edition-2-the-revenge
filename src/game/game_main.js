@@ -106,8 +106,6 @@ export class Game {
         const dt = Math.max(0, Math.min((time - this.lastTime) / 1000, 0.05));
         this.lastTime = time;
         try {
-            if (this.state === 'playing') this.player.update(this.input, dt, this.level.colliders, this.groundHeightAt);
-            this.render();
             if (this.state === 'playing') this.update(dt);
             this.render(time / 1000);
         } catch (error) {
@@ -119,7 +117,7 @@ export class Game {
 
     update(dt) {
         // Ambos os lados recebem os mesmos AABBs, portanto ninguém atravessa o outro.
-        this.player.update(this.input, dt, [...this.level.colliders, ...this.enemies.map(enemy => enemy.collider)]);
+        this.player.update(this.input, dt, [...this.level.colliders, ...this.enemies.map(enemy => enemy.collider)], this.groundHeightAt);
         for (const enemy of this.enemies) {
             const obstacles = [
                 ...this.level.colliders,
