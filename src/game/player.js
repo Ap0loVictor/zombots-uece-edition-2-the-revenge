@@ -15,7 +15,6 @@ export class Player {
         this.bodyHeight = 0.8;
         this.maxStep = 0.35;      // maior degrau que dá para subir (meio-fio ≈ 0,12)
         this.stepSmoothing = 18;  // quão rápido o corpo acompanha o desnível (1/s)
-        this.groundY = spawn.y;
         this.verticalVelocity = 0;
         this.jumpSpeed = 5.2;
         this.gravity = 14;
@@ -58,23 +57,31 @@ export class Player {
                 this.position.z = center.z;
             }
         }
-        this.followGround(dt, groundHeightAt);
-        if (input.consumePress?.('Space') && this.position.y <= this.groundY) this.verticalVelocity = this.jumpSpeed;
-        this.verticalVelocity -= this.gravity * dt;
-        this.position.y += this.verticalVelocity * dt;
-        if (this.position.y < this.groundY) {
-            this.position.y = this.groundY;
-            this.verticalVelocity = 0;
-        }
+        this.updateVertical(input, dt, groundHeightAt);
         this.syncCamera();
     }
 
-    // Sobe/desce suavemente até a altura do chão (sem gravidade nem pulo).
-    followGround(dt, groundHeightAt) {
-        const target = groundHeightAt(this.position.x, this.position.z);
-        const difference = target - this.position.y;
-        if (Math.abs(difference) < 1e-4) this.position.y = target;
-        else this.position.y += difference * (1 - Math.exp(-this.stepSmoothing * dt));
+    // Vertical: no chão (ou num degrau pequeno) acompanha o desnível suavemente;
+    // no ar vale a gravidade e o pouso encosta na altura do chão sob os pés.
+    updateVertical(input, dt, groundHeightAt) {
+        const ground = groundHeightAt(this.position.x, this.position.z);
+        const grounded = this.verticalVelocity <= 0 && this.position.y - ground <= 0.05;
+        if (input.consumePress?.('Space') && grounded) this.verticalVelocity = this.jumpSpeed;
+
+        if (this.verticalVelocity <= 0 && this.position.y - ground <= this.maxStep) {
+            // Degrau pequeno (meio-fio): sobe ou desce sem queda.
+            this.verticalVelocity = 0;
+            const difference = ground - this.position.y;
+            if (Math.abs(difference) < 1e-4) this.position.y = ground;
+            else this.position.y += difference * (1 - Math.exp(-this.stepSmoothing * dt));
+        } else {
+            this.verticalVelocity -= this.gravity * dt;
+            this.position.y += this.verticalVelocity * dt;
+            if (this.verticalVelocity <= 0 && this.position.y <= ground) {
+                this.position.y = ground;
+                this.verticalVelocity = 0;
+            }
+        }
     }
 
     syncCamera() {

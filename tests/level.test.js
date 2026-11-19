@@ -87,3 +87,34 @@ test('cilindro e esfera têm faces voltadas para fora', () => {
     const u = b.map((v, i) => v - a[i]), v = c.map((w, i) => w - a[i]);
     assert.ok(u[2] * v[0] - u[0] * v[2] > 0); // componente Y do produto vetorial aponta para cima
 });
+
+test('parado na calçada não treme e na pista também não', () => {
+    for (const [x, z, expected] of [[0, 10, 0.15], [0, 3, 0.03]]) {
+        const player = new Player({ x, y: expected, z }, null);
+        const heights = new Set();
+        for (let i = 0; i < 120; i++) { player.update(input(), 1 / 60, level.colliders, ground); heights.add(player.position.y); }
+        assert.deepEqual([...heights], [expected]);
+    }
+});
+
+test('pulo funciona na calçada, sobe acima do chão e pousa de volta', () => {
+    const player = new Player({ x: 0, y: 0.15, z: 10 }, null);
+    let jumped = false;
+    const press = { ...input(), consumePress: key => key === 'Space' && !jumped && (jumped = true) };
+    let peak = 0;
+    for (let i = 0; i < 90; i++) {
+        player.update(i === 0 ? press : input(), 1 / 60, level.colliders, ground);
+        peak = Math.max(peak, player.position.y);
+    }
+    assert.ok(peak > 0.15 + 0.5, `pico = ${peak}`);
+    assert.equal(player.position.y, 0.15);
+});
+
+test('pular da pista para a calçada e andar pulando não prende o jogador', () => {
+    const player = new Player({ x: 0, y: 0.03, z: 4 }, null);
+    player.camera.yaw = Math.PI;
+    const press = { isPressed: key => key === 'KeyW', getMouseDelta: () => ({ x: 0, y: 0 }), consumePress: key => key === 'Space' };
+    for (let i = 0; i < 90; i++) player.update(press, 1 / 60, level.colliders, ground);
+    assert.ok(player.position.z > 6);
+    assert.ok(player.position.y >= 0.15 - 1e-9);
+});
