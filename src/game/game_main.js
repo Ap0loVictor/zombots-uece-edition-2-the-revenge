@@ -31,6 +31,9 @@ export class Game {
         ]);
         this.level = level;
         this.player = new Player(level.spawn, playerMesh);
+        this.groundHeightAt = (x, z) => this.level.groundHeight(x, z);
+        this.player.position.y = this.groundHeightAt(this.player.position.x, this.player.position.z);
+        this.player.syncCamera();
         this.enemyMesh = Mesh.box(this.gl);
         this.enemies = [
             new Enemy('Zumbi', { x: -6, y: 0, z: -5 }, [0.12, 0.68, 0.22, 1]),
@@ -56,7 +59,8 @@ export class Game {
         this.canvas.addEventListener('click', () => this.enter(), options);
         this.state = 'ready';
         this.ui.button.disabled = false;
-        this.showOverlay('Arena de testes', 'Explore o mapa com Shift para correr e Espaço para pular. Encontre o zumbi verde, o robô azul e o Zombot preto.');
+        this.showOverlay('Campus UECE', 'Explore o mapa com Shift para correr e Espaço para pular. Encontre o zumbi verde, o robô azul e o Zombot preto.');
+
         this.lastTime = performance.now();
         this.animationFrame = requestAnimationFrame(this.frame);
     }
@@ -102,6 +106,8 @@ export class Game {
         const dt = Math.max(0, Math.min((time - this.lastTime) / 1000, 0.05));
         this.lastTime = time;
         try {
+            if (this.state === 'playing') this.player.update(this.input, dt, this.level.colliders, this.groundHeightAt);
+            this.render();
             if (this.state === 'playing') this.update(dt);
             this.render(time / 1000);
         } catch (error) {

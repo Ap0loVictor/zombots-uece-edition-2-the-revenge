@@ -56,6 +56,54 @@ export class Mesh {
             [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]);
     }
 
+    // Cilindro de raio 1 e altura 1, com a base em y = 0 (escale por (r, h, r)).
+    // Só tampa de cima: a base nunca é vista, pois o chão já está embaixo.
+    static cylinder(gl, segments = 32) {
+        const positions = [], normals = [];
+        const point = (angle, y) => [Math.cos(angle), y, Math.sin(angle)];
+        for (let i = 0; i < segments; i++) {
+            const a0 = (i / segments) * 2 * Math.PI, a1 = ((i + 1) / segments) * 2 * Math.PI;
+            const b0 = point(a0, 0), b1 = point(a1, 0), t0 = point(a0, 1), t1 = point(a1, 1);
+            const side = (angle, vertex) => [Math.cos(angle), 0, Math.sin(angle)];
+            Mesh.pushTriangle(positions, normals, [b1, b0, t0], [side(a1), side(a0), side(a0)]);
+            Mesh.pushTriangle(positions, normals, [b1, t0, t1], [side(a1), side(a0), side(a1)]);
+            const up = [0, 1, 0];
+            Mesh.pushTriangle(positions, normals, [[0, 1, 0], t1, t0], [up, up, up]);
+        }
+        return new Mesh(gl, positions, normals);
+    }
+
+    // Esfera de raio 1 centrada na origem (escale para obter elipsoides).
+    static sphere(gl, rings = 10, segments = 14) {
+        const positions = [], normals = [];
+        const point = (ring, segment) => {
+            const phi = (ring / rings) * Math.PI, theta = (segment / segments) * 2 * Math.PI;
+            return [Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta)];
+        };
+        for (let r = 0; r < rings; r++) {
+            for (let s = 0; s < segments; s++) {
+                const a = point(r, s), b = point(r + 1, s), c = point(r + 1, s + 1), d = point(r, s + 1);
+                if (r > 0) Mesh.pushTriangle(positions, normals, [a, b, d], [a, b, d]);
+                if (r < rings - 1) Mesh.pushTriangle(positions, normals, [d, b, c], [d, b, c]);
+            }
+        }
+        return new Mesh(gl, positions, normals);
+    }
+
+    // Garante que o triângulo fique com a face frontal (anti-horária) voltada para a normal.
+    static pushTriangle(positions, normals, vertices, vertexNormals) {
+        const [a, b, c] = vertices;
+        const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        const cross = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+        const n = vertexNormals[0].map((_, axis) => vertexNormals.reduce((sum, normal) => sum + normal[axis], 0));
+        const flip = cross[0] * n[0] + cross[1] * n[1] + cross[2] * n[2] < 0;
+        const order = flip ? [0, 2, 1] : [0, 1, 2];
+        for (const i of order) {
+            positions.push(...vertices[i]);
+            normals.push(...vertexNormals[i]);
+        }
+    }
+
     static box(gl) {
         const positions = [], normals = [];
         const faces = [

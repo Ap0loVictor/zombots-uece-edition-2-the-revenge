@@ -23,6 +23,6 @@ export class FPSCamera {
     }
 
     getProjectionMatrix(aspect) {
-        return Matrix4.perspective(this.fov, aspect, 0.05, 100);
+        return Matrix4.perspective(this.fov, aspect, 0.05, 150);
     }
 }
