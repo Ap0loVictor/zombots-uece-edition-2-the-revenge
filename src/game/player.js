@@ -15,6 +15,10 @@ export class Player {
         this.bodyHeight = 0.8;
         this.maxStep = 0.35;      // maior degrau que dá para subir (meio-fio ≈ 0,12)
         this.stepSmoothing = 18;  // quão rápido o corpo acompanha o desnível (1/s)
+        this.groundY = spawn.y;
+        this.verticalVelocity = 0;
+        this.jumpSpeed = 5.2;
+        this.gravity = 14;
         // Abrange os cantos do cubo mesmo quando ele gira; a câmera também fica protegida.
         this.halfSize = { x: this.bodySize / Math.SQRT2, y: 0.9, z: this.bodySize / Math.SQRT2 };
         this.syncCamera();
@@ -34,7 +38,7 @@ export class Player {
         const magnitude = Math.hypot(forward, strafe);
         if (magnitude > 0) {
             const yaw = this.camera.yaw;
-            const speed = input.isPressed('Space') ? this.runSpeed : this.walkSpeed;
+            const speed = input.isPressed('ShiftLeft') || input.isPressed('ShiftRight') ? this.runSpeed : this.walkSpeed;
             const distance = speed * dt / magnitude;
             const displacement = {
                 x: (-Math.sin(yaw) * forward + Math.cos(yaw) * strafe) * distance,
@@ -55,6 +59,13 @@ export class Player {
             }
         }
         this.followGround(dt, groundHeightAt);
+        if (input.consumePress?.('Space') && this.position.y <= this.groundY) this.verticalVelocity = this.jumpSpeed;
+        this.verticalVelocity -= this.gravity * dt;
+        this.position.y += this.verticalVelocity * dt;
+        if (this.position.y < this.groundY) {
+            this.position.y = this.groundY;
+            this.verticalVelocity = 0;
+        }
         this.syncCamera();
     }
 

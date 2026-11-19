@@ -1,10 +1,11 @@
 const MOVEMENT_CODES = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD',
-    'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'Space']);
+    'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space']);
 
 export class InputHandler {
     constructor(canvas, { onLockChange, onPause, onError }) {
         this.canvas = canvas;
         this.keys = new Set();
+        this.pressed = new Set();
         this.mouse = { x: 0, y: 0 };
         this.events = new AbortController();
         const options = { signal: this.events.signal };
@@ -19,6 +20,7 @@ export class InputHandler {
             if (this.locked && MOVEMENT_CODES.has(event.code)) {
                 event.preventDefault();
                 this.keys.add(event.code);
+                if (!event.repeat) this.pressed.add(event.code);
             }
         }, options);
         window.addEventListener('keyup', event => this.keys.delete(event.code), options);
@@ -66,6 +68,12 @@ export class InputHandler {
         return this.keys.has(code);
     }
 
+    consumePress(code) {
+        const pressed = this.pressed.has(code);
+        this.pressed.delete(code);
+        return pressed;
+    }
+
     getMouseDelta() {
         const delta = this.mouse;
         this.mouse = { x: 0, y: 0 };
@@ -74,6 +82,7 @@ export class InputHandler {
 
     reset() {
         this.keys.clear();
+        this.pressed.clear();
         this.mouse = { x: 0, y: 0 };
     }
 
