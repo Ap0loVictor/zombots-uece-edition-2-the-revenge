@@ -44,7 +44,7 @@ test('prédios e troncos bloqueiam mesmo sobre a calçada', () => {
     const player = new Player({ x: 0, y: 0, z: 10 }, null);
     player.update(input(), 1 / 60, level.colliders, ground);
     for (let i = 0; i < 200; i++) player.update(input(['KeyS']), 1 / 60, level.colliders, ground);
-    assert.ok(player.position.z <= 17 - player.halfSize.z + 1e-6);     // CED começa em z = 17
+    assert.ok(player.position.z <= 15 - player.halfSize.z + 1e-6);     // muro do CED em z = 15
     assert.equal(level.colliders.some(box => intersectsAABB(player.collider, box)), false);
 });
 
@@ -117,4 +117,28 @@ test('pular da pista para a calçada e andar pulando não prende o jogador', () 
     for (let i = 0; i < 90; i++) player.update(press, 1 / 60, level.colliders, ground);
     assert.ok(player.position.z > 6);
     assert.ok(player.position.y >= 0.15 - 1e-9);
+});
+test('muro do CED não deixa entrar nem pulando', () => {
+    const player = new Player({ x: 0, y: 0.15, z: 10 }, null);
+    const press = { isPressed: key => key === 'KeyS', getMouseDelta: () => ({ x: 0, y: 0 }), consumePress: key => key === 'Space' };
+    for (let i = 0; i < 300; i++) player.update(press, 1 / 60, level.colliders, ground);
+    assert.ok(player.position.z <= 15 - player.halfSize.z + 1e-6, `z = ${player.position.z}`);
+});
+
+test('canteiro central, passarelas e areia do estacionamento', () => {
+    assert.equal(ground(-10, 0), 0.16);   // canteiro
+    assert.equal(ground(0, 0), 0.03);     // aberto na faixa de pedestres
+    assert.equal(ground(20, 22), 0.15);   // passarela
+    assert.equal(ground(20, 28), 0.02);   // areia
+    assert.equal(ground(-34, 8), 0.03);   // pista da rotatória segue no mapa
+});
+
+test('tronco no canteiro central bloqueia', () => {
+    const player = new Player({ x: 6, y: 0.16, z: -3 }, null);
+    const press = { isPressed: key => key === 'KeyS', getMouseDelta: () => ({ x: 0, y: 0 }), consumePress: () => false };
+    player.camera.yaw = Math.PI; // rumo a +Z, direto no tronco (6, 0)
+    player.camera.yaw = 0;
+    const back = { ...press, isPressed: key => key === 'KeyS' };
+    for (let i = 0; i < 200; i++) player.update(back, 1 / 60, level.colliders, ground);
+    assert.equal(level.colliders.some(box => intersectsAABB(player.collider, box)), false);
 });
