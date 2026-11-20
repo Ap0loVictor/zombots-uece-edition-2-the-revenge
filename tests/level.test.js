@@ -20,7 +20,7 @@ test('altura do chão: mato, asfalto, calçada e ilha da rotatória', () => {
     assert.equal(ground(-34, 0), 0.16);      // mato elevado da ilha
     assert.equal(ground(-34, 5.2), 0.15);    // meio-fio da ilha
     assert.equal(ground(-34, 8), 0.03);      // pista da rotatória
-    assert.equal(ground(0, 0.5), 0.03);      // faixa pintada não altera o chão
+    assert.equal(ground(-20, 0), 0.03);      // faixa pintada não altera o chão
 });
 
 test('jogador sobe da pista para a calçada, sem ser bloqueado', () => {
@@ -41,7 +41,7 @@ test('desnível maior que maxStep bloqueia como parede', () => {
 });
 
 test('prédios e troncos bloqueiam mesmo sobre a calçada', () => {
-    const player = new Player({ x: 0, y: 0, z: 10 }, null);
+    const player = new Player({ x: -12, y: 0, z: 10 }, null);
     player.update(input(), 1 / 60, level.colliders, ground);
     for (let i = 0; i < 200; i++) player.update(input(['KeyS']), 1 / 60, level.colliders, ground);
     assert.ok(player.position.z <= 15 - player.halfSize.z + 1e-6);     // muro do CED em z = 15
@@ -119,7 +119,7 @@ test('pular da pista para a calçada e andar pulando não prende o jogador', () 
     assert.ok(player.position.y >= 0.15 - 1e-9);
 });
 test('muro do CED não deixa entrar nem pulando', () => {
-    const player = new Player({ x: 0, y: 0.15, z: 10 }, null);
+    const player = new Player({ x: -12, y: 0.15, z: 10 }, null);
     const press = { isPressed: key => key === 'KeyS', getMouseDelta: () => ({ x: 0, y: 0 }), consumePress: key => key === 'Space' };
     for (let i = 0; i < 300; i++) player.update(press, 1 / 60, level.colliders, ground);
     assert.ok(player.position.z <= 15 - player.halfSize.z + 1e-6, `z = ${player.position.z}`);
@@ -127,9 +127,9 @@ test('muro do CED não deixa entrar nem pulando', () => {
 
 test('canteiro central, passarelas e areia do estacionamento', () => {
     assert.equal(ground(-10, 0), 0.16);   // canteiro
-    assert.equal(ground(0, 0), 0.03);     // aberto na faixa de pedestres
+    assert.equal(ground(-20, 0), 0.03);   // aberto na faixa de pedestres (ponta do NC2A)
     assert.equal(ground(20, 22), 0.15);   // passarela
-    assert.equal(ground(20, 28), 0.02);   // areia
+    assert.equal(ground(20, 28), 0.02);   // terra
     assert.equal(ground(-34, 8), 0.03);   // pista da rotatória segue no mapa
 });
 
@@ -141,4 +141,64 @@ test('tronco no canteiro central bloqueia', () => {
     const back = { ...press, isPressed: key => key === 'KeyS' };
     for (let i = 0; i < 200; i++) player.update(back, 1 / 60, level.colliders, ground);
     assert.equal(level.colliders.some(box => intersectsAABB(player.collider, box)), false);
+});
+
+test('CED: metades iguais, vão de dois players e muro leste alinhado com o NC2A', () => {
+    const box = name => data.obstacles.find(o => o._name === name).rect;
+    const [a0, , a1] = box('CED'), [b0, , b1] = box('CED2');
+    assert.ok(Math.abs((a1 - a0) - (b1 - b0)) < 1e-9, 'metades com larguras diferentes');
+    assert.ok(Math.abs(box('CED')[3] - box('CED2')[3]) < 1e-9 && box('CED')[1] === box('CED2')[1]);
+    assert.ok(b0 - a1 >= 2 * 1.13 - 1e-9, `vão = ${b0 - a1}`);
+    assert.equal(box('Muro CED leste')[2], box('NC2A')[2]);
+});
+
+test('prédios: NC2A = Nupeinsq, CEDs mais escuros, todos mais escuros que a calçada', () => {
+    const color = name => data.obstacles.find(o => o._name === name).color;
+    assert.deepEqual(color('NC2A'), color('Nupeinsq'));
+    const sidewalk = data.materials.sidewalk.color[0];
+    for (const name of ['NC2A', 'Nupeinsq', 'CED', 'CED2', 'Biblioteca', 'Entrada', 'Saude']) assert.ok(color(name)[0] < sidewalk, name);
+    assert.ok(color('CED')[0] < color('NC2A')[0] && color('CED2')[0] < color('NC2A')[0]);
+});
+
+test('asfalto vai da rotatória ao fim do canteiro; depois é só terra', () => {
+    assert.equal(ground(20, 3), 0.03);     // ainda asfalto
+    assert.equal(ground(23, 3), 0.02);     // curva: terra
+    assert.equal(ground(31, -3), 0.02);    // cruzamento: terra
+    assert.equal(ground(31, -20), 0.02);   // via norte-sul: terra
+    assert.equal(ground(31, -45), 0.02);
+    assert.equal(ground(23.5, -20), 0.15); // calçada continua
+});
+
+test('prédios da frente: mesma linha de fachada, calçada mais rasa e rua intacta', () => {
+    const rect = name => data.obstacles.find(o => o._name === name).rect;
+    assert.equal(rect('NC2A')[3], rect('Nupeinsq')[3]);
+    const front = rect('NC2A')[3];
+    assert.equal(ground(0, front + 0.1), 0.15);   // calçada logo à frente dos prédios
+    assert.equal(ground(0, -6.1), 0.15);
+    assert.equal(ground(0, -5.9), 0.03);          // rua começa em z = -6, como antes
+    assert.equal(ground(0, 5.9), 0.03);
+});
+
+test('NC2A cresce até a parede norte do mapa', () => {
+    const [x0, z0, x1, z1] = data.obstacles.find(o => o._name === 'NC2A').rect;
+    assert.equal(z0, -data.depth / 2);
+    assert.equal(z1, data.obstacles.find(o => o._name === 'Nupeinsq').rect[3]);
+});
+
+test('elevação: tira colada à face leste do NC2A, da curva de entrada até a calçada', () => {
+    const [x0, z0, x1, z1] = data.surfaces.find(s => s._name === 'Elevação ao lado do NC2A').rect;
+    const nc2a = data.obstacles.find(o => o._name === 'NC2A').rect;
+    const arm = data.surfaces.find(s => s._name === 'Caminho NC2A (entrada)').rect;
+    assert.equal(x0, nc2a[2]);                         // colada na face leste
+    assert.equal(z0, Math.max(arm[1], arm[3]));        // começa na curva da entrada
+    assert.equal(z1, data.obstacles.find(o => o._name === 'Nupeinsq').rect[3]); // vai até a calçada
+    assert.equal(ground((x0 + x1) / 2, (z0 + z1) / 2), 0.3);
+    assert.equal(ground(-20, -20), 0);                 // nada do lado oeste
+});
+
+test('elevação: sobe andando a partir da calçada', () => {
+    const player = new Player({ x: -6.5, y: 0.15, z: -8 }, null);
+    for (let i = 0; i < 90; i++) player.update(input(['KeyW']), 1 / 60, level.colliders, ground);
+    assert.ok(player.position.z < -12, `z = ${player.position.z}`);
+    assert.ok(Math.abs(player.position.y - 0.3) < 1e-3, `y = ${player.position.y}`);
 });
