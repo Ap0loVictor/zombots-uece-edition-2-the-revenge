@@ -14,7 +14,8 @@
     "yellow": {"color": [0.95, 0.78, 0.15, 1], "height": 0.045, "decal": true},
     "white": {"color": [0.95, 0.95, 0.95, 1], "height": 0.045, "decal": true},
     "sand": {"color": [0.85, 0.76, 0.55, 1], "height": 0.02},
-    "platform": {"color": [0.6, 0.6, 0.58, 1], "height": 0.3}
+    "platform": {"color": [0.6, 0.6, 0.58, 1], "height": 0.3},
+    "stair": {"color": [0.72, 0.71, 0.68, 1], "height": 0.15}
   },
   "surfaces": [
     {"_name": "Via sul (da rotatória)", "material": "asphalt", "rect": [-40, 0, -28, 50]},
@@ -47,10 +48,21 @@
     {"_name": "Via leste-oeste (asfalto até o fim do canteiro)", "material": "asphalt", "rect": [-50, -6, 21, 6]},
     {"_name": "Estrada de terra (curva)", "material": "sand", "rect": [21, -6, 37, 6]},
     {"_name": "Estrada de terra (norte)", "material": "sand", "rect": [22.5, -50, 37, -6]},
-    {"_name": "Elevação ao lado do NC2A", "material": "platform", "rect": [-7.5, -30, -5.5, -10.5]}
-  ], 
+    {"_name": "Elevação ao lado do NC2A", "material": "platform", "rect": [-7.5, -30, -5.5, -10.5]},
+    {"_name": "Degrau 1", "material": "stair", "height": 0.433, "rect": [-12.3, -28.03, -11.975, -26.23]},
+    {"_name": "Degrau 2", "material": "stair", "height": 0.717, "rect": [-11.975, -28.03, -11.65, -26.23]},
+    {"_name": "Degrau 3", "material": "stair", "height": 1.0, "rect": [-11.65, -28.03, -11.325, -26.23]},
+    {"_name": "Degrau 4", "material": "stair", "height": 1.283, "rect": [-11.325, -28.03, -11.0, -26.23]},
+    {"_name": "Degrau 5", "material": "stair", "height": 1.567, "rect": [-11.0, -28.03, -10.675, -26.23]},
+    {"_name": "Degrau 6", "material": "stair", "height": 1.85, "rect": [-10.675, -28.03, -10.35, -26.23]},
+    {"_name": "Degrau 7", "material": "stair", "height": 2.133, "rect": [-10.35, -28.03, -10.025, -26.23]},
+    {"_name": "Degrau 8", "material": "stair", "height": 2.417, "rect": [-10.025, -28.03, -9.7, -26.23]},
+    {"_name": "Degrau 9", "material": "stair", "height": 2.7, "rect": [-9.7, -28.03, -9.375, -26.23]},
+    {"_name": "Degrau 10", "material": "stair", "height": 2.983, "rect": [-9.375, -28.03, -9.05, -26.23]},
+    {"_name": "Degrau 11", "material": "stair", "height": 3.267, "rect": [-9.05, -28.03, -8.725, -26.23]},
+    {"_name": "Degrau 12", "material": "stair", "height": 3.55, "rect": [-8.725, -28.03, -8.4, -26.23]}
+  ],
   "obstacles": [
-    {"_name": "NC2A", "rect": [-22.5, -50, -7.5, -10.5], "height": 7, "color": [0.6, 0.6, 0.6, 1]},
     {"_name": "Nupeinsq", "rect": [7.5, -45, 18, -10.5], "height": 6, "color": [0.6, 0.6, 0.6, 1]},
     {"_name": "CED", "rect": [-24.6, 17, -18.2, 47], "height": 6, "color": [0.42, 0.42, 0.43, 1]},
     {"_name": "CED2", "rect": [-15.8, 17, -9.4, 47], "height": 6, "color": [0.42, 0.42, 0.43, 1]},
@@ -60,7 +72,37 @@
     {"_name": "Muro CED norte", "rect": [-26.5, 15, -7.5, 15.4], "height": 1.4, "color": [0.78, 0.72, 0.6, 1]},
     {"_name": "Muro CED sul", "rect": [-26.5, 48.6, -7.5, 49], "height": 1.4, "color": [0.78, 0.72, 0.6, 1]},
     {"_name": "Muro CED oeste", "rect": [-26.5, 15, -26.1, 49], "height": 1.4, "color": [0.78, 0.72, 0.6, 1]},
-    {"_name": "Muro CED leste", "rect": [-7.9, 15, -7.5, 49], "height": 1.4, "color": [0.78, 0.72, 0.6, 1]}
+    {"_name": "Muro CED leste", "rect": [-7.9, 15, -7.5, 49], "height": 1.4, "color": [0.78, 0.72, 0.6, 1]},
+    {"_name": "Guarda-corpo da escada (2º andar)", "rect": [-12.38, -28.03, -12.3, -26.23], "base": 3.55, "height": 1.0, "color": [0.3, 0.3, 0.32, 1]}
+  ],
+  "buildings": [
+    {"_name": "NC2A", "rect": [-22.5, -50.0, -7.5, -10.5], "floors": 2, "floorHeight": 3.4, "slab": 0.3, "floorTop": 0.15, "color": [0.6, 0.6, 0.6, 1], "interiorColor": [0.9, 0.88, 0.82, 1], "floorColor": [0.78, 0.76, 0.7, 1], "slabColor": [0.86, 0.86, 0.83, 1], "roofColor": [0.5, 0.5, 0.5, 1], "doorColor": [0.45, 0.3, 0.18, 1], "slabHole": [-12.3, -28.03, -8.4, -26.23],
+     "walls": [
+      {"_name": "Fachada norte", "line": [-22.52, -49.86, -7.48, -49.86], "thickness": 0.32, "span": true},
+      {"_name": "Fachada sul", "line": [-22.52, -10.64, -7.48, -10.64], "thickness": 0.32, "span": true},
+      {"_name": "Fachada oeste", "line": [-22.36, -50.02, -22.36, -10.48], "thickness": 0.32, "span": true},
+      {"_name": "Fachada leste", "line": [-7.64, -50.02, -7.64, -10.48], "thickness": 0.32, "span": true, "doors": [{"_name": "Entrada principal", "at": -31.75, "width": 2.4, "state": "open", "leaf": false, "floors": [1]}]},
+      {"_name": "Parede do corredor (fileira oeste)", "line": [-17.29, -49.85, -17.29, -10.65], "doors": [{"_name": "Sala 018 Reunião", "at": -11.5, "width": 1.5, "state": "open", "swing": -1}, {"_name": "Sala 016 GESAD Estágio", "at": -13.96, "width": 1.5, "state": "open", "swing": -1}, {"_name": "Sala 014 LOGIN/LARCOM/LISAD/LEID/INETSYS", "at": -18.18, "width": 1.5, "state": "open", "swing": -1}, {"_name": "Sala 012 LAURA", "at": -23.62, "width": 1.5, "state": "open", "swing": -1}, {"_name": "Banheiro Feminino", "at": -27.34, "width": 1.56, "state": "closed", "swing": -1}, {"_name": "Elevador (cadeirante)", "at": -29.27, "width": 1.29, "state": "closed", "swing": -1}, {"_name": "Banheiro Acessível", "at": -31.09, "width": 1.35, "state": "closed", "swing": -1}, {"_name": "Banheiro Masculino", "at": -32.92, "width": 1.32, "state": "closed", "swing": -1}, {"_name": "Sala 002 Google", "at": -36.55, "width": 1.5, "state": "closed", "swing": -1}, {"_name": "Sala 004 Aula", "at": -40.55, "width": 1.5, "state": "closed", "swing": -1}, {"_name": "Sala 006 LDI/Instituto CAIS", "at": -45.91, "width": 1.5, "state": "closed", "swing": -1}]},
+      {"_name": "Parede do corredor (fileira leste)", "line": [-12.4, -49.85, -12.4, -10.65], "doors": [{"_name": "Sala 015 GESAD Projetos", "at": -12.84, "width": 1.5, "state": "open", "swing": 1}, {"_name": "Sala 013 GESAD Fábrica de Testadores", "at": -16.82, "width": 1.5, "state": "open", "swing": 1}, {"_name": "Sala 011 LDI", "at": -22.3, "width": 1.5, "state": "open", "swing": 1}, {"_name": "ESCADAS", "at": -27.965, "width": 3.5, "height": 3.1, "state": "open", "leaf": false}, {"_name": "ENTRADA / RECEPÇÃO", "at": -31.76, "width": 2.4, "state": "open", "leaf": false}, {"_name": "Sala 001 Miniauditório", "at": -37.42, "width": 1.5, "state": "closed", "swing": 1}, {"_name": "Sala 005 Aula", "at": -42.63, "width": 1.5, "state": "closed", "swing": 1}, {"_name": "Sala 007 Aula", "at": -45.58, "width": 1.5, "state": "closed", "swing": 1}, {"_name": "Sala 009 Aula", "at": -48.52, "width": 1.5, "state": "closed", "swing": 1}]},
+      {"_name": "Divisória antes de Sala 016 GESAD Estágio", "line": [-22.35, -12.5, -17.29, -12.5]},
+      {"_name": "Divisória antes de Sala 014 LOGIN/LARCOM/LISAD/LEID/INETSYS", "line": [-22.35, -15.42, -17.29, -15.42]},
+      {"_name": "Divisória antes de Sala 012 LAURA", "line": [-22.35, -20.94, -17.29, -20.94]},
+      {"_name": "Divisória antes de Banheiro Feminino", "line": [-22.35, -26.31, -17.29, -26.31]},
+      {"_name": "Divisória antes de Elevador (cadeirante)", "line": [-22.35, -28.37, -17.29, -28.37]},
+      {"_name": "Divisória antes de Banheiro Acessível", "line": [-22.35, -30.16, -17.29, -30.16]},
+      {"_name": "Divisória antes de Banheiro Masculino", "line": [-22.35, -32.01, -17.29, -32.01]},
+      {"_name": "Divisória antes de Sala 002 Google", "line": [-22.35, -33.83, -17.29, -33.83]},
+      {"_name": "Divisória antes de Sala 004 Aula", "line": [-22.35, -39.26, -17.29, -39.26]},
+      {"_name": "Divisória antes de Sala 006 LDI/Instituto CAIS", "line": [-22.35, -41.83, -17.29, -41.83]},
+      {"_name": "Divisória antes de Sala 013 GESAD Fábrica de Testadores", "line": [-12.4, -15.18, -7.65, -15.18]},
+      {"_name": "Divisória antes de Sala 011 LDI", "line": [-12.4, -18.47, -7.65, -18.47]},
+      {"_name": "Divisória antes de ESCADAS", "line": [-12.4, -26.13, -7.65, -26.13]},
+      {"_name": "Divisória antes de ENTRADA / RECEPÇÃO", "line": [-12.4, -29.8, -7.65, -29.8]},
+      {"_name": "Divisória antes de Sala 001 Miniauditório", "line": [-12.4, -33.71, -7.65, -33.71]},
+      {"_name": "Divisória antes de Sala 005 Aula", "line": [-12.4, -41.14, -7.65, -41.14]},
+      {"_name": "Divisória antes de Sala 007 Aula", "line": [-12.4, -44.12, -7.65, -44.12]},
+      {"_name": "Divisória antes de Sala 009 Aula", "line": [-12.4, -47.05, -7.65, -47.05]}
+     ]}
   ],
   "trees": [
     [-34, 0, 1.6],

@@ -51,6 +51,7 @@ export class Level {
 
         // Superfícies primeiro: as árvores consultam a altura do chão onde nascem.
         for (const surface of data.surfaces ?? []) this.addSurface(surface);
+        for (const building of data.buildings ?? []) this.addBuilding(building);
         for (const obstacle of data.obstacles ?? []) this.addObstacle(obstacle);
         (data.trees ?? []).forEach((tree, index) => this.addTree(tree, index));
     }
@@ -75,36 +76,120 @@ export class Level {
     }
 
     addSurface(data) {
-        const material = this.material(data.material);
+        const material = data.material ? this.material(data.material) : {};
         const height = data.height ?? material.height;
+        const base = data.base ?? material.base ?? 0;  // laje: a caixa vai de "base" até "height"
         const color = data.color ?? material.color;
         const decal = data.decal ?? material.decal ?? false;
         let surface;
         if (data.rect) {
             const r = Level.normalizeRect(data.rect);
             surface = { height, contains: (x, z) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1 };
-            this.addBox((r.x0 + r.x1) / 2, 0, (r.z0 + r.z1) / 2, r.x1 - r.x0, height, r.z1 - r.z0, color);
+            this.addBox((r.x0 + r.x1) / 2, base, (r.z0 + r.z1) / 2, r.x1 - r.x0, height - base, r.z1 - r.z0, color);
         } else if (data.circle) {
             const [cx, cz, radius] = data.circle;
             surface = { height, contains: (x, z) => (x - cx) ** 2 + (z - cz) ** 2 <= radius * radius };
             this.items.push({
                 mesh: this.cylinderMesh, color,
-                matrix: Matrix4.multiply(Matrix4.translation(cx, 0, cz), Matrix4.scaling(radius, height, radius)),
+                matrix: Matrix4.multiply(Matrix4.translation(cx, base, cz), Matrix4.scaling(radius, height - base, radius)),
             });
         } else {
             throw new Error(`Superfície "${data._name ?? data.material}" precisa de "rect" ou "circle".`);
         }
-        // Faixas pintadas ficam só 1,5 cm acima do asfalto e não alteram a altura do chão.
+        // Faixas pintadas e telhados não contam como chão onde se anda.
         if (!decal) this.surfaces.push(surface);
     }
 
+    // collide: false → só aparece (ex.: folha de porta aberta); visible: false → só colide.
     addObstacle(data) {
         const r = Level.normalizeRect(data.rect);
         const base = data.base ?? 0;
         const sx = r.x1 - r.x0, sz = r.z1 - r.z0, cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2;
-        this.addBox(cx, base, cz, sx, data.height, sz, data.color);
-        this.colliders.push(createAABB({ x: cx, y: base + data.height / 2, z: cz },
-            { x: sx / 2, y: data.height / 2, z: sz / 2 }));
+        if (data.visible !== false) this.addBox(cx, base, cz, sx, data.height, sz, data.color);
+        if (data.collide !== false) {
+            this.colliders.push(createAABB({ x: cx, y: base + data.height / 2, z: cz },
+                { x: sx / 2, y: data.height / 2, z: sz / 2 }));
+        }
+    }
+
+    // ---------- prédios com interior ----------
+    // Gera, a partir do JSON: piso térreo, lajes dos andares (com vão opcional para a escada),
+    // cobertura e paredes (externas e internas) com portas. Todos os andares repetem a mesma planta.
+    addBuilding(b) {
+        const r = Level.normalizeRect(b.rect);
+        const floors = b.floors ?? 1, floorHeight = b.floorHeight ?? 3.4;
+        const slab = b.slab ?? 0.3, floorTop = b.floorTop ?? 0.15;
+        const levelOf = floor => floorTop + (floor - 1) * floorHeight;   // altura do piso do andar (1 = térreo)
+        const roofTop = levelOf(floors) + floorHeight;
+        const wallHeight = floorHeight - slab;                            // pé-direito livre
+        const footprint = [r.x0, r.z0, r.x1, r.z1];
+        const woodColor = b.doorColor ?? [0.45, 0.3, 0.18, 1];
+
+        this.addSurface({ rect: footprint, height: floorTop, color: b.floorColor });
+        for (let floor = 2; floor <= floors; floor++) {
+            const pieces = b.slabHole ? Level.subtractRect(footprint, b.slabHole) : [footprint];
+            for (const rect of pieces) {
+                this.addSurface({ rect, base: levelOf(floor) - slab, height: levelOf(floor), color: b.slabColor });
+            }
+        }
+        this.addSurface({ rect: footprint, base: roofTop - slab, height: roofTop, color: b.roofColor, decal: true });
+
+        for (const wall of b.walls ?? []) {
+            const doorsOn = floor => (wall.doors ?? []).filter(d => (d.floors ?? [...Array(floors)].map((_, i) => i + 1)).includes(floor));
+            if (wall.span) {
+                // Parede externa: uma peça só, do chão ao teto; as portas ficam no térreo.
+                this.addWall(wall, 0, roofTop - slab, floorTop, doorsOn(1), b.color, woodColor);
+            } else {
+                for (const floor of wall.floors ?? [...Array(floors)].map((_, i) => i + 1)) {
+                    this.addWall(wall, levelOf(floor), wallHeight, levelOf(floor), doorsOn(floor), b.interiorColor, woodColor);
+                }
+            }
+        }
+    }
+
+    // wall.line = [x0, z0, x1, z1] (paralela a um eixo); portas: { at, width, height, state, swing, leaf }
+    addWall(wall, base, height, doorBase, doors, color, woodColor) {
+        const [ax, az, bx, bz] = wall.line;
+        const alongX = az === bz;
+        const thickness = wall.thickness ?? 0.2;
+        const fixed = alongX ? az : ax;
+        const start = alongX ? Math.min(ax, bx) : Math.min(az, bz);
+        const end = alongX ? Math.max(ax, bx) : Math.max(az, bz);
+        const piece = (s0, s1, y0, h, pieceColor, collide = true, t = thickness, offset = 0) => {
+            if (s1 - s0 < 1e-6 || h < 1e-6) return;
+            const rect = alongX
+                ? [s0, fixed + offset - t / 2, s1, fixed + offset + t / 2]
+                : [fixed + offset - t / 2, s0, fixed + offset + t / 2, s1];
+            this.addObstacle({ rect, base: y0, height: h, color: pieceColor, collide });
+        };
+        let cursor = start;
+        for (const door of [...doors].sort((p, q) => p.at - q.at)) {
+            const width = door.width ?? 1.5, doorHeight = door.height ?? 2.1;
+            const s0 = door.at - width / 2, s1 = door.at + width / 2;
+            piece(cursor, s0, base, height, color);                                       // parede até a porta
+            piece(s0, s1, doorBase + doorHeight, base + height - doorBase - doorHeight, color); // verga
+            if (door.state === 'closed') {
+                piece(s0, s1, doorBase, doorHeight, woodColor, true, thickness * 0.6);    // folha fechada
+            } else if (door.leaf !== false) {
+                // Folha aberta a 90°, só visual, junto ao batente, virada para dentro da sala.
+                const swing = door.swing ?? 1, leafLength = width - 0.1;
+                const leafRect = alongX
+                    ? [s0 - 0.025, fixed, s0 + 0.025, fixed + swing * leafLength]
+                    : [fixed, s0 - 0.025, fixed + swing * leafLength, s0 + 0.025];
+                this.addObstacle({ rect: leafRect, base: doorBase, height: doorHeight - 0.05, color: woodColor, collide: false });
+            }
+            cursor = s1;
+        }
+        piece(cursor, end, base, height, color);
+    }
+
+    // Retângulo menos um retângulo interno: devolve até 4 peças.
+    static subtractRect(outer, hole) {
+        const o = Level.normalizeRect(outer), h = Level.normalizeRect(hole);
+        return [
+            [o.x0, o.z0, h.x0, o.z1], [h.x1, o.z0, o.x1, o.z1],
+            [h.x0, o.z0, h.x1, h.z0], [h.x0, h.z1, h.x1, o.z1],
+        ].filter(([x0, z0, x1, z1]) => x1 - x0 > 1e-6 && z1 - z0 > 1e-6);
     }
 
     // Árvore: tronco (cilindro) + copa (esfera achatada). Só o tronco colide;
@@ -129,12 +214,13 @@ export class Level {
 
     // ---------- consulta ----------
 
-    // Altura do chão em (x, z): a mais alta entre as superfícies que contêm o ponto
-    // (é o mesmo que o teste de profundidade mostra na tela). Fora de todas, é o mato: 0.
-    groundHeight(x, z) {
+    // Altura do chão em (x, z) para quem está na altura y: a mais alta entre as superfícies que contêm
+    // o ponto e que estão ao alcance do degrau (até y + reach). Assim a laje do 2º andar só vale para quem
+    // está nela, e o térreo continua sendo o chão de quem está embaixo. Sem y: a mais alta de todas.
+    groundHeight(x, z, y = Infinity, reach = 0.5) {
         let height = 0;
         for (const surface of this.surfaces) {
-            if (surface.height > height && surface.contains(x, z)) height = surface.height;
+            if (surface.height > height && surface.height <= y + reach && surface.contains(x, z)) height = surface.height;
         }
         return height;
     }

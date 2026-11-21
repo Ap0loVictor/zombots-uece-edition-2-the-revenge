@@ -31,7 +31,7 @@ export class Game {
         ]);
         this.level = level;
         this.player = new Player(level.spawn, playerMesh);
-        this.groundHeightAt = (x, z) => this.level.groundHeight(x, z);
+        this.groundHeightAt = (x, z, y) => this.level.groundHeight(x, z, y);
         this.player.position.y = this.groundHeightAt(this.player.position.x, this.player.position.z);
         this.player.syncCamera();
         this.enemyMesh = Mesh.box(this.gl);

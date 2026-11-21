@@ -96,8 +96,11 @@ O colisor é independente da malha: uma AABB de aproximadamente **1,13 × 1,80 �
 
 `assets/map/test_level.json` descreve o campus (100 × 100 unidades, centrado na origem, quatro paredes de 3 unidades). Há dois tipos de elemento:
 
-- **Superfícies (`surfaces`)**: mato (o próprio `floorColor`), asfalto, calçada, estacionamento, ilha da rotatória e faixas pintadas. **Não colidem**; definem a *altura do chão* no ponto. O jogador acompanha essa altura e sobe o meio-fio (calçada = 0,15; asfalto = 0,03). Desníveis maiores que `maxStep` (0,35) em `player.js` funcionam como parede.
+- **Superfícies (`surfaces`)**: mato (o próprio `floorColor`), asfalto, calçada, estacionamento, ilha da rotatória e faixas pintadas. **Não colidem**; definem a *altura do chão* no ponto. O jogador acompanha essa altura e sobe o meio-fio (calçada = 0,15; asfalto = 0,03). O jogador sobe degraus de até `maxStep` (0,5) em `player.js`; algo mais alto que isso deve ser um obstáculo. O chão é consultado **na altura de quem anda** (`groundHeight(x, z, y)`), por isso andares empilhados funcionam.
 - **Obstáculos (`obstacles`, `trees`, paredes)**: geram colisores AABB. Prédios usam `"rect": [x0, z0, x1, z1]` e `"height"`; árvores são `[x, z, escala]` (só o tronco colide, a copa fica acima dos olhos).
+
+- **Prédios com interior (`buildings`)**: o NC2A é gerado a partir da planta do térreo (`assets/map/test_level.json`, chave `buildings`). Cada prédio tem `floors`, `floorHeight`, pisos/lajes/cobertura e uma lista de `walls`. Uma parede é `"line": [x0, z0, x1, z1]` (paralela a um eixo) com `doors`: `{ "at": posição, "width", "state": "open" | "closed", "swing": ±1, "floors": [1, 2] }`. Portas abertas deixam um vão com a folha aberta; fechadas são um painel que colide. `"span": true` faz uma parede externa do chão ao teto. `slabHole` é o vão da laje do 2º andar (sobre a escada). Todos os andares repetem a mesma planta.
+- **Escada do NC2A**: 12 degraus de 0,28 (`Degrau 1…12`, superfícies) subindo para leste na sala ESCADAS, com o guarda-corpo do 2º andar como obstáculo. Os degraus ficam abaixo de `maxStep`, então o jogador sobe andando ou correndo.
 
 Formas: `"rect": [x0, z0, x1, z1]` ou `"circle": [cx, cz, raio]`. As cores e alturas ficam em `materials`; uma superfície com `"decal": true` (faixas) não altera a altura do chão. Onde duas superfícies se sobrepõem vale a mais alta, igual ao que aparece na tela. Para editar, altere o JSON e recarregue. Mantenha o spawn livre; o `y` dele é ajustado ao chão automaticamente.
 Paredes e obstáculos geram malhas e colisores a partir das mesmas dimensões. Para editar o nível, altere o JSON e recarregue a página. Mantenha dimensões positivas, obstáculos apoiados no chão e o spawn livre dentro da arena. O chão é a referência do salto: a gravidade traz o jogador de volta a Y = 0; não há suporte a plataformas.
@@ -133,4 +136,3 @@ Para conferir a integração no navegador:
 ## Limites desta versão
 
 O protótipo inclui três inimigos: zumbi verde, robô azul e Zombot preto. Eles usam geometria construída manualmente, perseguem o jogador e possuem colisores AABB contra o jogador, paredes, obstáculos e outros inimigos. Eles param antes do contato e não possuem dano, vida ou golpes nesta etapa. Falhas de carregamento ou de WebGL são exibidas na tela; em caso de perda do contexto gráfico, recarregue a página.
-
