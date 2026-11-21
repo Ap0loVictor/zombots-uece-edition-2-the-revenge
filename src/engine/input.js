@@ -1,5 +1,5 @@
 const MOVEMENT_CODES = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD',
-    'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space']);
+    'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space', 'KeyM']);
 
 export class InputHandler {
     constructor(canvas, { onLockChange, onPause, onError }) {
@@ -17,13 +17,23 @@ export class InputHandler {
                 if (!event.repeat) onPause();
                 return;
             }
-            if (this.locked && MOVEMENT_CODES.has(event.code)) {
+            if (this.locked && (MOVEMENT_CODES.has(event.code) || /^Digit[0-9]$/.test(event.code))) {
                 event.preventDefault();
                 this.keys.add(event.code);
                 if (!event.repeat) this.pressed.add(event.code);
             }
         }, options);
         window.addEventListener('keyup', event => this.keys.delete(event.code), options);
+        document.addEventListener('mousedown', event => {
+            if (this.locked && event.button === 0) {
+                event.preventDefault();
+                this.pressed.add('MouseLeft');
+                this.keys.add('MouseLeft');
+            }
+        }, options);
+        document.addEventListener('mouseup', event => {
+            if (event.button === 0) this.keys.delete('MouseLeft');
+        }, options);
         document.addEventListener('mousemove', event => {
             if (this.locked) {
                 this.mouse.x += event.movementX;

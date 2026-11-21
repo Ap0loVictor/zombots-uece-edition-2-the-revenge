@@ -76,7 +76,8 @@ export class OBJLoader {
                     const v = c.map((value, axis) => value - a[axis]);
                     const normal = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
                     const length = Math.hypot(...normal);
-                    if (length < 1e-10) throw new Error('Triângulo degenerado no modelo OBJ.');
+                    // Exportações reais podem conter faces sem área; elas não contribuem para a imagem.
+                    if (length < 1e-10) continue;
                     for (let corner = 0; corner < 3; corner++) {
                         positions.push(...triangle[corner]);
                         normals.push(...(face[corner][2] ? indexed(sourceNormals, face[corner][2]) : normal.map(value => value / length)));
