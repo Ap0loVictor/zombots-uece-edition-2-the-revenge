@@ -6,6 +6,8 @@ import { InputHandler } from '../engine/input.js';
 import { intersectsAABB } from '../engine/collision.js';
 import { Level } from './level.js';
 import { Player } from './player.js';
+import { WeaponSystem } from './weapons.js';
+import { GameAudio } from '../engine/audio.js';
 import { Enemy } from './enemy.js';
 
 export class Game {
@@ -34,6 +36,9 @@ export class Game {
         this.groundHeightAt = (x, z, y) => this.level.groundHeight(x, z, y);
         this.player.position.y = this.groundHeightAt(this.player.position.x, this.player.position.z);
         this.player.syncCamera();
+        this.weapons = await WeaponSystem.load(this.gl);
+        this.audio = new GameAudio();
+        this.weapons.onShoot = weapon => this.audio.play(weapon.sound);
         this.enemyMesh = Mesh.box(this.gl);
         this.enemies = [
             new Enemy('Zumbi', { x: -6, y: 0, z: -5 }, [0.12, 0.68, 0.22, 1]),
@@ -66,10 +71,13 @@ export class Game {
     }
 
     enter() {
-        if (this.state === 'ready' || this.state === 'paused') this.input.lock();
+        if (this.state === 'ready' || this.state === 'paused') {
+            this.input.lock();
+        }
     }
 
     setPlaying(playing) {
+        this.audio?.setPlaying(playing && this.state !== 'error');
         if (this.state === 'error') {
             if (playing) this.input?.unlock();
             return;
@@ -118,6 +126,9 @@ export class Game {
     update(dt) {
         // Ambos os lados recebem os mesmos AABBs, portanto ninguém atravessa o outro.
         this.player.update(this.input, dt, [...this.level.colliders, ...this.enemies.map(enemy => enemy.collider)], this.groundHeightAt);
+        if (this.input.consumePress('KeyM')) this.audio.toggleMute();
+        this.weapons.update(dt, this.input, this.player.camera);
+        this.ui.status.textContent = `${this.weapons.selected + 1} · ${this.weapons.equipped.name} · SOM ${this.audio.muted ? 'DESLIGADO' : 'LIGADO'}`;
         for (const enemy of this.enemies) {
             const obstacles = [
                 ...this.level.colliders,
@@ -139,11 +150,14 @@ export class Game {
         this.level.draw(this.programInfo);
         for (const enemy of this.enemies) enemy.draw(this.enemyMesh, this.programInfo, elapsed);
         this.player.draw(this.programInfo);
+        this.weapons.drawProjectiles(this.programInfo);
+        this.weapons.drawWeapon(gl, this.programInfo);
     }
 
     fail(error) {
         console.error(error);
         this.state = 'error';
+        this.audio?.setPlaying(false);
         cancelAnimationFrame(this.animationFrame);
         this.input?.unlock();
         this.showOverlay('Não foi possível iniciar ou continuar', error.message);
@@ -158,6 +172,8 @@ export class Game {
         this.level?.dispose();
         this.player?.mesh.dispose();
         this.enemyMesh?.dispose();
+        this.weapons?.dispose();
+        this.audio?.dispose();
         if (this.programInfo) this.gl.deleteProgram(this.programInfo.program);
     }
 }

@@ -32,6 +32,9 @@ Não há dependências externas, CDN, instalação de pacotes ou etapa de build.
 | Olhar | Mouse |
 | Correr | Segurar `Shift` enquanto se move |
 | Pular | `Espaço` |
+| Selecionar pistola / AKM / escopeta / sniper | `1` / `2` / `3` / `4` |
+| Ativar / silenciar áudio | `M` |
+| Disparar (segure para rajada com AKM) | Botão esquerdo do mouse |
 | Pausar / retomar | `P` |
 | Liberar o cursor e pausar | `Esc` |
 | Entrar / retomar capturando o mouse | Botão na tela |
@@ -136,3 +139,21 @@ Para conferir a integração no navegador:
 ## Limites desta versão
 
 O protótipo inclui três inimigos: zumbi verde, robô azul e Zombot preto. Eles usam geometria construída manualmente, perseguem o jogador e possuem colisores AABB contra o jogador, paredes, obstáculos e outros inimigos. Eles param antes do contato e não possuem dano, vida ou golpes nesta etapa. Falhas de carregamento ou de WebGL são exibidas na tela; em caso de perda do contexto gráfico, recarregue a página.
+O protótipo inclui três inimigos: zumbi verde, robô azul e Zombot preto. Eles usam geometria construída manualmente, perseguem o jogador e possuem colisores AABB contra o jogador, paredes, obstáculos e outros inimigos. Eles param antes do contato e não possuem dano, vida ou golpes nesta etapa. Falhas de carregamento ou de WebGL são exibidas na tela; em caso de perda do contexto gráfico, recarregue a página.
+
+
+### Armas e projéteis
+
+A referência atualizada `cg-project3d-uece/assets/` fornece quatro modelos, copiados com seus MTL para `assets/weapons/`: `armapistola.obj`, `arma.obj` (AKM), `armaescopeta.obj` e `armasniper.obj`. A esfera `esfera.obj` é o projétil. Os modelos incluem braços e preservam os materiais de cores sólidas.
+
+`src/game/weapons.js` concentra o inventário e as transformações individuais de escala, posição e rotação. Todos apontam originalmente para +X e são girados para −Z. A boca de cada cano tem uma coordenada local própria, transformada para o mundo com a mesma matriz usada no desenho da arma e a orientação da câmera. Somente o slot selecionado é desenhado, em uma passagem FPS após o cenário; os projéteis respeitam a profundidade do mundo.
+
+As teclas 1–4 selecionam pistola, AKM, escopeta e sniper. Cada clique esquerdo cria um projétil que converge para a mira a 40 unidades, viajando a 24 unidades/s. A limpeza ocorre após 3 segundos ou 60 unidades, com limite de 64 projéteis simultâneos e buffers compartilhados. A AKM dispara continuamente enquanto o botão esquerdo estiver pressionado, com intervalo de 8/60 s entre tiros; as outras armas disparam uma esfera por clique; não há dano, colisões de projéteis ou lógica de combate.
+
+### Áudio
+
+`src/engine/audio.js` usa pools limitados de elementos de áudio apenas para os quatro sons de tiro. Cada disparo usa o som da arma equipada. Não há música nem passos. A tecla `M` silencia/reativa os sons, com indicação no HUD. Pausa, perda de foco e erros interrompem o áudio e limpam o botão pressionado. Falhas de mídia ou bloqueios de autoplay não interrompem o jogo.
+
+Áudios de dano, morte, power-up, vitória e derrota não foram associados a eventos porque essas mecânicas não existem nesta versão.
+
+Verificação manual: entre, alterne 1–4, dispare olhando em diferentes direções e durante movimento/salto. Confira alinhamento dos canos, som correspondente, remoção dos projéteis, rajada da AKM ao segurar e interrupção ao soltar, `M`, pausa e retomada. Cliques no menu não devem disparar.
