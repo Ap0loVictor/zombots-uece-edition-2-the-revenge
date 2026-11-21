@@ -13,8 +13,8 @@ export class Player {
         this.runSpeed = 5.5;
         this.bodySize = 0.8;
         this.bodyHeight = 0.8;
-        this.maxStep = 0.35;      // maior degrau que dá para subir (meio-fio ≈ 0,12)
-        this.stepSmoothing = 18;  // quão rápido o corpo acompanha o desnível (1/s)
+        this.maxStep = 0.5;       // maior degrau que dá para subir (meio-fio ≈ 0,12; degrau de escada ≈ 0,28)
+        this.stepSmoothing = 30;  // quão rápido o corpo acompanha o desnível (1/s)
         this.verticalVelocity = 0;
         this.jumpSpeed = 5.2;
         this.gravity = 14;
@@ -27,7 +27,7 @@ export class Player {
         return createAABB({ ...this.position, y: this.position.y + this.halfSize.y }, this.halfSize);
     }
 
-    // groundHeightAt(x, z) devolve a altura do chão no ponto (calçada, asfalto…).
+    // groundHeightAt(x, z, y) devolve a altura do chão no ponto para quem está na altura y.
     update(input, dt, colliders, groundHeightAt = () => 0) {
         this.camera.look(input.getMouseDelta());
         const forward = Number(input.isPressed('KeyW') || input.isPressed('ArrowUp')) -
@@ -47,7 +47,7 @@ export class Player {
             const center = moveAABB({ ...this.position, y: this.position.y + this.halfSize.y },
                 this.halfSize, displacement, colliders);
             // Desnível alto demais funciona como parede; tenta deslizar por um eixo de cada vez.
-            const canStand = (x, z) => groundHeightAt(x, z) - this.position.y <= this.maxStep;
+            const canStand = (x, z) => groundHeightAt(x, z, this.position.y) - this.position.y <= this.maxStep;
             if (canStand(center.x, center.z)) {
                 this.position.x = center.x;
                 this.position.z = center.z;
@@ -64,7 +64,7 @@ export class Player {
     // Vertical: no chão (ou num degrau pequeno) acompanha o desnível suavemente;
     // no ar vale a gravidade e o pouso encosta na altura do chão sob os pés.
     updateVertical(input, dt, groundHeightAt) {
-        const ground = groundHeightAt(this.position.x, this.position.z);
+        const ground = groundHeightAt(this.position.x, this.position.z, this.position.y);
         const grounded = this.verticalVelocity <= 0 && this.position.y - ground <= 0.05;
         if (input.consumePress?.('Space') && grounded) this.verticalVelocity = this.jumpSpeed;
 
