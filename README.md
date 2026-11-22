@@ -3,9 +3,10 @@ Segundo trabalho acadêmico da disciplina de Computação Gráfica da UECE.
 
 Protótipo minimalista em **primeira pessoa**, com WebGL puro e módulos JavaScript nativos. Inclui uma arena delimitada, colisões, movimentação pelo teclado, mouse look e um cubo vermelho flutuante como corpo provisório do jogador.
 
-## Pra rodar
-Lunux: python3 -m http.server 8000 --bind 127.0.0.1
-Win: python -m http.server 8000 --bind 127.0.0.1
+## Para rodar
+Linux: ```python3 -m http.server 8000 --bind 127.0.0.1```
+
+Win: ```python -m http.server 8000 --bind 127.0.0.1```
 
 
 ## História
