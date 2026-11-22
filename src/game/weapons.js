@@ -1,5 +1,7 @@
 import { Matrix4 } from '../engine/matrix.js';
 import { OBJLoader } from '../engine/obj_loader.js';
+import { MeleeSystem } from './melee.js';
+import { MeleeView } from './melee_view.js';
 
 // O asset aponta para +X. Rotacionamos para -Z e encaixamos os braços no HUD.
 export const WEAPON_DEFINITIONS = [
@@ -25,19 +27,23 @@ export function transformPoint(matrix, point) {
 export class WeaponSystem {
     static async load(gl) {
         const meshes = [];
+        let bullet;
         try {
             for (const definition of WEAPON_DEFINITIONS) {
                 meshes.push(await OBJLoader.load(gl, new URL(`../../assets/weapons/${definition.file}`, import.meta.url)));
             }
-            const bullet = await OBJLoader.load(gl, new URL('../../assets/weapons/esfera.obj', import.meta.url));
-            return new WeaponSystem(meshes, bullet);
+            bullet = await OBJLoader.load(gl, new URL('../../assets/weapons/esfera.obj', import.meta.url));
+            return new WeaponSystem(meshes, bullet, WEAPON_DEFINITIONS, new MeleeSystem(new MeleeView(gl)));
         } catch (error) {
             meshes.forEach(mesh => mesh.dispose());
+            bullet?.dispose();
             throw error;
         }
     }
 
-    constructor(meshes, bulletMesh, definitions = WEAPON_DEFINITIONS) {
+    constructor(meshes, bulletMesh, definitions = WEAPON_DEFINITIONS, melee = new MeleeSystem()) {
+        this.melee = melee;
+        this.meleeEquipped = false;
         this.weapons = definitions.map((definition, index) => ({
             ...definition, mesh: meshes[index],
             localMatrix: Matrix4.multiply(Matrix4.translation(...definition.offset),
@@ -56,9 +62,13 @@ export class WeaponSystem {
     }
 
     get equipped() { return this.weapons[this.selected]; }
+    get showingMelee() { return this.meleeEquipped || this.melee.attacking; }
 
     select(index) {
-        if (Number.isInteger(index) && index >= 0 && index < this.weapons.length) this.selected = index;
+        if (Number.isInteger(index) && index >= 0 && index < this.weapons.length) {
+            this.selected = index;
+            this.meleeEquipped = false;
+        }
     }
 
     shoot(camera) {
@@ -76,6 +86,7 @@ export class WeaponSystem {
     }
 
     update(dt, input, camera) {
+        this.melee.update(dt);
         for (const projectile of this.projectiles) {
             projectile.age += dt;
             projectile.distance += this.speed * dt;
@@ -85,8 +96,15 @@ export class WeaponSystem {
         this.weapons.forEach((weapon, index) => {
             if (input.consumePress(weapon.key)) this.select(index);
         });
+        if (input.consumePress('KeyQ')) {
+            this.melee.cycle();
+            this.meleeEquipped = true;
+        }
+        if (input.consumePress('KeyF')) this.melee.swing();
         const clicked = input.consumePress('MouseLeft');
         if (this.shotCooldown > 0) this.shotCooldown -= dt;
+        // Consome o clique mesmo durante o melee para não dispará-lo ao terminar.
+        if (this.showingMelee) return;
         const held = input.isPressed?.('MouseLeft') ?? false;
         if (this.equipped.automatic) {
             if ((clicked || held) && this.shotCooldown <= 1e-9) {
@@ -107,6 +125,10 @@ export class WeaponSystem {
         // Passagem FPS: evita que paredes e o corpo ocultem a arma junto à câmera.
         gl.clear(gl.DEPTH_BUFFER_BIT);
         gl.uniformMatrix4fv(programInfo.uniforms.u_view, false, Matrix4.identity());
+        if (this.showingMelee) {
+            this.melee.draw(programInfo);
+            return;
+        }
         this.equipped.mesh.modelMatrix = this.equipped.localMatrix;
         this.equipped.mesh.draw(programInfo);
     }
@@ -114,6 +136,7 @@ export class WeaponSystem {
     dispose() {
         this.weapons.forEach(weapon => weapon.mesh.dispose());
         this.bulletMesh.dispose();
+        this.melee.dispose();
         this.projectiles.length = 0;
     }
 }

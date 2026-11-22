@@ -34,6 +34,8 @@ Não há dependências externas, CDN, instalação de pacotes ou etapa de build.
 | Correr | Segurar `Shift` enquanto se move |
 | Pular | `Espaço` |
 | Selecionar pistola / AKM / escopeta / sniper | `1` / `2` / `3` / `4` |
+| Alternar e equipar soco / katana | `Q` |
+| Executar golpe com o melee selecionado | `F` |
 | Ativar / silenciar áudio | `M` |
 | Disparar (segure para rajada com AKM) | Botão esquerdo do mouse |
 | Pausar / retomar | `P` |
@@ -153,8 +155,22 @@ As teclas 1–4 selecionam pistola, AKM, escopeta e sniper. Cada clique esquerdo
 
 ### Áudio
 
-`src/engine/audio.js` usa pools limitados de elementos de áudio apenas para os quatro sons de tiro. Cada disparo usa o som da arma equipada. Não há música nem passos. A tecla `M` silencia/reativa os sons, com indicação no HUD. Pausa, perda de foco e erros interrompem o áudio e limpam o botão pressionado. Falhas de mídia ou bloqueios de autoplay não interrompem o jogo.
+`src/engine/audio.js` usa pools limitados de elementos de áudio para os quatro sons de tiro e os dois sons de movimento melee. Cada disparo ou golpe usa o som da arma correspondente. Não há música nem passos. A tecla `M` silencia/reativa os sons, com indicação no HUD. Pausa, perda de foco e erros interrompem o áudio e limpam as entradas. Falhas de mídia ou bloqueios de autoplay não interrompem o jogo.
+
+`assets/audio/soco.wav` e `katana.wav` são efeitos originais sintetizados de deslocamento de ar, com ressonância metálica na katana. Podem ser regenerados com `python3 scripts/generate_melee_audio.py`, sem dependências externas. Os arquivos prontos já acompanham o jogo.
 
 Áudios de dano, morte, power-up, vitória e derrota não foram associados a eventos porque essas mecânicas não existem nesta versão.
 
 Verificação manual: entre, alterne 1–4, dispare olhando em diferentes direções e durante movimento/salto. Confira alinhamento dos canos, som correspondente, remoção dos projéteis, rajada da AKM ao segurar e interrupção ao soltar, `M`, pausa e retomada. Cliques no menu não devem disparar.
+
+### Soco e katana
+
+O slot melee começa no **soco**. `Q` alterna entre soco e katana e coloca a opção selecionada nas mãos; `1–4` voltam às armas de fogo, preservando a seleção melee. O HUD mostra qual golpe está selecionado.
+
+`F` executa um golpe por pressionamento: avanço do punho no soco (0,38 s) ou preparação e corte diagonal na katana (0,62 s). Também funciona como golpe rápido enquanto uma arma de fogo está equipada: ela fica oculta durante a animação e retorna ao terminar. Durante o melee não há disparos; segurar `F` não repete golpes. Trocar com `Q` durante uma animação seleciona o próximo golpe sem modificar o que já começou. Pausar cancela a animação e interrompe seu som.
+
+`src/game/melee.js` controla seleção e tempo dos golpes; `src/game/melee_view.js` constrói as mãos com luvas, mangas e a katana com guarda, cabo e lâmina curva facetada. As malhas usam cores sólidas, iluminação e a mesma passagem FPS das armas de fogo. Os buffers são compartilhados entre quadros e liberados com o restante das armas.
+
+Esta etapa é somente visual e sonora: **não implementa hitboxes, detecção de acerto ou dano**. Os inimigos mantêm o comportamento existente, mesmo ao receber golpes visualmente.
+
+Verificação manual: pressione `F` com a pistola, depois `Q` e `F` para a katana, e `Q` e `F` para o soco. Confira os modelos em repouso, os dois movimentos e sons; volte para 1–4 e teste o golpe rápido. Experimente `M`, pausa/perda de foco durante o golpe e retomada. Confira que manter `F` pressionado não repete golpes e que clicar durante o melee não cria projéteis.

@@ -38,6 +38,11 @@ export const Matrix4 = {
         return [c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1];
     },
 
+    rotationZ(angle) {
+        const c = Math.cos(angle), s = Math.sin(angle);
+        return [c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+    },
+
     perspective(fov, aspect, near, far) {
         const f = 1 / Math.tan(fov / 2);
         const range = 1 / (near - far);
