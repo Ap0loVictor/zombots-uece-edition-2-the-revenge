@@ -11,15 +11,13 @@ export class Player {
         this.eyeHeight = 1.6;
         this.walkSpeed = 3;
         this.runSpeed = 5.5;
-        this.bodySize = 0.8;
-        this.bodyHeight = 0.8;
         this.maxStep = 0.5;       // maior degrau que dá para subir (meio-fio ≈ 0,12; degrau de escada ≈ 0,28)
         this.stepSmoothing = 30;  // quão rápido o corpo acompanha o desnível (1/s)
         this.verticalVelocity = 0;
         this.jumpSpeed = 5.2;
         this.gravity = 14;
-        // Abrange os cantos do cubo mesmo quando ele gira; a câmera também fica protegida.
-        this.halfSize = { x: this.bodySize / Math.SQRT2, y: 0.9, z: this.bodySize / Math.SQRT2 };
+        // Mantém a margem de colisão do jogador, independente da roupa e da animação.
+        this.halfSize = { x: 0.8 / Math.SQRT2, y: 0.9, z: 0.8 / Math.SQRT2 };
         this.syncCamera();
     }
 
@@ -29,6 +27,7 @@ export class Player {
 
     // groundHeightAt(x, z, y) devolve a altura do chão no ponto para quem está na altura y.
     update(input, dt, colliders, groundHeightAt = () => 0) {
+        const previous = { ...this.position };
         this.camera.look(input.getMouseDelta());
         const forward = Number(input.isPressed('KeyW') || input.isPressed('ArrowUp')) -
             Number(input.isPressed('KeyS') || input.isPressed('ArrowDown'));
@@ -59,6 +58,8 @@ export class Player {
         }
         this.updateVertical(input, dt, groundHeightAt);
         this.syncCamera();
+        this.mesh?.update?.(Math.hypot(this.position.x - previous.x, this.position.z - previous.z), dt,
+            this.verticalVelocity === 0);
     }
 
     // Vertical: no chão (ou num degrau pequeno) acompanha o desnível suavemente;
@@ -90,8 +91,8 @@ export class Player {
 
     draw(programInfo) {
         this.mesh.modelMatrix = Matrix4.multiply(
-            Matrix4.translation(this.position.x, this.position.y + this.bodyHeight, this.position.z),
-            Matrix4.multiply(Matrix4.rotationY(this.camera.yaw), Matrix4.scaling(this.bodySize, this.bodySize, this.bodySize)));
+            Matrix4.translation(this.position.x, this.position.y, this.position.z),
+            Matrix4.rotationY(this.camera.yaw));
         this.mesh.draw(programInfo);
     }
 }

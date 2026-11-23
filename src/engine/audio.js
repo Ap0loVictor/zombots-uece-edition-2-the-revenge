@@ -1,16 +1,17 @@
-// Pools limitados permitem sobrepor tiros sem criar elementos a cada disparo.
+// Pools limitados permitem sobrepor tiros/golpes sem criar elementos a cada ação.
 // Falha de mídia/autoplay nunca interrompe a simulação.
 export class GameAudio {
     constructor(createAudio = url => new Audio(url)) {
         this.active = false;
         this.muted = false;
         this.pools = new Map();
-        for (const [name, count, volume] of [
+        for (const [name, count, volume, extension = 'mp3'] of [
             ['pistola', 4, 0.3], ['akm', 4, 0.3], ['escopeta', 4, 0.3],
             ['sniper', 4, 0.3],
+            ['soco', 2, 0.55, 'wav'], ['katana', 2, 0.45, 'wav'],
         ]) {
             const pool = Array.from({ length: count }, () => {
-                const audio = createAudio(new URL(`../../assets/audio/${name}.mp3`, import.meta.url).href);
+                const audio = createAudio(new URL(`../../assets/audio/${name}.${extension}`, import.meta.url).href);
                 audio.preload = 'auto';
                 audio.volume = volume;
                 audio.loop = false;

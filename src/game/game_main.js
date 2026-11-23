@@ -1,6 +1,6 @@
 import { initGL, resizeCanvas } from '../engine/gl.js';
 import { Shaders } from '../engine/shaders.js';
-import { OBJLoader } from '../engine/obj_loader.js';
+import { PlayerBody } from './character_model.js';
 import { Mesh } from '../engine/mesh.js';
 import { InputHandler } from '../engine/input.js';
 import { intersectsAABB } from '../engine/collision.js';
@@ -27,18 +27,16 @@ export class Game {
             this.fail(new Error('O contexto gráfico foi perdido. Recarregue a página para continuar.'));
         }, { signal: this.events.signal });
 
-        const [level, playerMesh] = await Promise.all([
-            Level.load(this.gl, new URL('../../assets/map/test_level.json', import.meta.url)),
-            OBJLoader.load(this.gl, new URL('../../assets/player/cube.obj', import.meta.url)),
-        ]);
+        const level = await Level.load(this.gl, new URL('../../assets/map/test_level.json', import.meta.url));
         this.level = level;
-        this.player = new Player(level.spawn, playerMesh);
+        this.player = new Player(level.spawn, new PlayerBody(this.gl));
         this.groundHeightAt = (x, z, y) => this.level.groundHeight(x, z, y);
         this.player.position.y = this.groundHeightAt(this.player.position.x, this.player.position.z);
         this.player.syncCamera();
         this.weapons = await WeaponSystem.load(this.gl);
         this.audio = new GameAudio();
         this.weapons.onShoot = weapon => this.audio.play(weapon.sound);
+        this.weapons.melee.onSwing = weapon => this.audio.play(weapon.sound);
         this.enemyMesh = Mesh.box(this.gl);
         this.enemies = [
             new Enemy('Zumbi', { x: -6, y: 0, z: -5 }, [0.12, 0.68, 0.22, 1]),
@@ -78,6 +76,7 @@ export class Game {
 
     setPlaying(playing) {
         this.audio?.setPlaying(playing && this.state !== 'error');
+        if (!playing) this.weapons?.melee.cancel();
         if (this.state === 'error') {
             if (playing) this.input?.unlock();
             return;
@@ -128,7 +127,8 @@ export class Game {
         this.player.update(this.input, dt, [...this.level.colliders, ...this.enemies.map(enemy => enemy.collider)], this.groundHeightAt);
         if (this.input.consumePress('KeyM')) this.audio.toggleMute();
         this.weapons.update(dt, this.input, this.player.camera);
-        this.ui.status.textContent = `${this.weapons.selected + 1} · ${this.weapons.equipped.name} · SOM ${this.audio.muted ? 'DESLIGADO' : 'LIGADO'}`;
+        const held = this.weapons.showingMelee ? 'MELEE' : `${this.weapons.selected + 1} · ${this.weapons.equipped.name}`;
+        this.ui.status.textContent = `${held} · Q / F: ${this.weapons.melee.equipped.name} · SOM ${this.audio.muted ? 'DESLIGADO' : 'LIGADO'}`;
         for (const enemy of this.enemies) {
             const obstacles = [
                 ...this.level.colliders,
