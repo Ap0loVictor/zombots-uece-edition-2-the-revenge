@@ -27,7 +27,7 @@ function indexed(values, token) {
 }
 
 export class OBJLoader {
-    static async load(gl, url) {
+    static async load(gl, url, options = {}) {
         const absoluteURL = new URL(url, document.baseURI);
         const text = await readText(absoluteURL);
         const materials = new Map();
@@ -36,7 +36,7 @@ export class OBJLoader {
             const materialURL = new URL(line.slice(7).trim(), absoluteURL);
             for (const [name, color] of this.parseMTL(await readText(materialURL))) materials.set(name, color);
         }
-        const data = this.parse(text, materials);
+        const data = this.parse(text, materials, options);
         return new Mesh(gl, data.positions, data.normals, data.colors);
     }
 
@@ -57,16 +57,18 @@ export class OBJLoader {
 
     // OBJ com faces convexas, normais opcionais e material difuso Kd.
     // UVs são aceitos nos índices, mas texturas não fazem parte deste protótipo.
-    static parse(text, materials = new Map()) {
+    static parse(text, materials = new Map(), { excludeObjects = [] } = {}) {
         const vertices = [], sourceNormals = [];
         const positions = [], normals = [], colors = [];
         let color = [1, 1, 1, 1];
+        let excluded = false;
         for (const line of lines(text)) {
             const [keyword, ...parts] = line.split(/\s+/);
-            if (keyword === 'v') vertices.push(vector(parts, 3));
+            if (keyword === 'o') excluded = excludeObjects.includes(parts.join(' '));
+            else if (keyword === 'v') vertices.push(vector(parts, 3));
             else if (keyword === 'vn') sourceNormals.push(vector(parts, 3));
             else if (keyword === 'usemtl') color = materials.get(parts.join(' ')) ?? [1, 1, 1, 1];
-            else if (keyword === 'f') {
+            else if (keyword === 'f' && !excluded) {
                 if (parts.length < 3) throw new Error('Face OBJ com menos de três vértices.');
                 for (let i = 1; i < parts.length - 1; i++) {
                     const face = [parts[0], parts[i], parts[i + 1]].map(part => part.split('/'));

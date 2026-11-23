@@ -5,6 +5,7 @@ import { MeleeSystem } from '../src/game/melee.js';
 import { MeleeView } from '../src/game/melee_view.js';
 import { FPSCamera } from '../src/engine/camera.js';
 import { Game } from '../src/game/game_main.js';
+import { Matrix4 } from '../src/engine/matrix.js';
 
 const mesh = () => ({ draw() { this.drawn = true; }, dispose() {} });
 const input = (...keys) => { const pressed = new Set(keys); return { consumePress: key => pressed.delete(key) }; };
@@ -109,8 +110,9 @@ test('malhas low poly e poses de toda a animação têm geometria e matrizes vá
     assert.ok(view.blade.vertexCount > 0 && view.blade.vertexCount < 150);
     assert.ok(buffers.every(data => data.every(Number.isFinite)));
     const poses = [];
-    for (const mesh of [view.box, view.blade]) mesh.draw = () => {
+    for (const mesh of [view.box, view.blade, view.arms.mesh]) mesh.draw = () => {
         assert.ok(mesh.modelMatrix.every(Number.isFinite));
+        assert.ok(Matrix4.normalMatrix(mesh.modelMatrix).every(Number.isFinite));
         poses.push([...mesh.modelMatrix]);
     };
     for (const index of [0, 1]) for (const progress of [null, 0, 0.2, 0.32, 0.48, 0.75, 0.99]) {

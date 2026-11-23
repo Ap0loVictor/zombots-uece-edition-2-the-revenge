@@ -2,20 +2,29 @@ import { Matrix4 } from '../engine/matrix.js';
 import { OBJLoader } from '../engine/obj_loader.js';
 import { MeleeSystem } from './melee.js';
 import { MeleeView } from './melee_view.js';
+import { FirstPersonArms } from './character_model.js';
 
-// O asset aponta para +X. Rotacionamos para -Z e encaixamos os braços no HUD.
+// Os assets apontam para +X; pegadas ficam em coordenadas locais da arma.
 export const WEAPON_DEFINITIONS = [
     { name: 'Pistola', file: 'armapistola.obj', key: 'Digit1', sound: 'pistola',
-        offset: [0.12, -0.30, -0.88], scale: 0.085, yaw: Math.PI / 2,
+        offset: [0.10, -0.27, -0.64], scale: 0.075, yaw: Math.PI / 2,
+        grips: [{ side: 1, point: [2.25, -.10, 1.75], pitch: -.18 },
+            { side: -1, point: [2.40, -.25, .40], roll: -.2, pitch: -.18 }],
         muzzle: [6.624849, 1.65, 1.487161] },
     { name: 'AKM', file: 'arma.obj', key: 'Digit2', sound: 'akm', automatic: true, shotInterval: 8 / 60,
-        offset: [0.12, -0.34, -1.08], scale: 0.065, yaw: Math.PI / 2,
+        offset: [0.12, -0.31, -0.85], scale: 0.055, yaw: Math.PI / 2,
+        grips: [{ side: 1, point: [-3.15, -.40, 1.85], pitch: -.25 },
+            { side: -1, point: [2.55, .65, 1.45], roll: -1.25 }],
         muzzle: [12.403117, 1.596228, 1.723988] },
     { name: 'Escopeta', file: 'armaescopeta.obj', key: 'Digit3', sound: 'escopeta',
-        offset: [0.12, -0.34, -1.08], scale: 0.065, yaw: Math.PI / 2,
+        offset: [0.12, -0.31, -0.85], scale: 0.055, yaw: Math.PI / 2,
+        grips: [{ side: 1, point: [-3.15, -.40, 1.85], pitch: -.25 },
+            { side: -1, point: [2.60, .65, 1.45], roll: -1.25 }],
         muzzle: [13.861917, 1.788772, 1.764079] },
     { name: 'Sniper', file: 'armasniper.obj', key: 'Digit4', sound: 'sniper',
-        offset: [0.18, -0.34, -1.02], scale: 0.055, yaw: Math.PI / 2,
+        offset: [0.16, -0.32, -0.82], scale: 0.05, yaw: Math.PI / 2,
+        grips: [{ side: 1, point: [-3.15, -.10, 1.85], pitch: -.25 },
+            { side: -1, point: [2.65, .45, 1.45], roll: -1.25 }],
         muzzle: [18.201145, 2.138749, 0.767044] },
 ];
 
@@ -30,10 +39,11 @@ export class WeaponSystem {
         let bullet;
         try {
             for (const definition of WEAPON_DEFINITIONS) {
-                meshes.push(await OBJLoader.load(gl, new URL(`../../assets/weapons/${definition.file}`, import.meta.url)));
+                meshes.push(await OBJLoader.load(gl, new URL(`../../assets/weapons/${definition.file}`, import.meta.url),
+                    { excludeObjects: ['ArmModel', 'ArmModel.001'] }));
             }
             bullet = await OBJLoader.load(gl, new URL('../../assets/weapons/esfera.obj', import.meta.url));
-            return new WeaponSystem(meshes, bullet, WEAPON_DEFINITIONS, new MeleeSystem(new MeleeView(gl)));
+            return new WeaponSystem(meshes, bullet, WEAPON_DEFINITIONS, new MeleeSystem(new MeleeView(gl)), new FirstPersonArms(gl));
         } catch (error) {
             meshes.forEach(mesh => mesh.dispose());
             bullet?.dispose();
@@ -41,7 +51,8 @@ export class WeaponSystem {
         }
     }
 
-    constructor(meshes, bulletMesh, definitions = WEAPON_DEFINITIONS, melee = new MeleeSystem()) {
+    constructor(meshes, bulletMesh, definitions = WEAPON_DEFINITIONS, melee = new MeleeSystem(), arms = null) {
+        this.arms = arms;
         this.melee = melee;
         this.meleeEquipped = false;
         this.weapons = definitions.map((definition, index) => ({
@@ -131,12 +142,14 @@ export class WeaponSystem {
         }
         this.equipped.mesh.modelMatrix = this.equipped.localMatrix;
         this.equipped.mesh.draw(programInfo);
+        this.arms?.drawFirearm(programInfo, this.equipped);
     }
 
     dispose() {
         this.weapons.forEach(weapon => weapon.mesh.dispose());
         this.bulletMesh.dispose();
         this.melee.dispose();
+        this.arms?.dispose();
         this.projectiles.length = 0;
     }
 }

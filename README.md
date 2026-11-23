@@ -1,7 +1,7 @@
 # zombots-uece-edition-2-the-revenge
 Segundo trabalho acadêmico da disciplina de Computação Gráfica da UECE.
 
-Protótipo minimalista em **primeira pessoa**, com WebGL puro e módulos JavaScript nativos. Inclui uma arena delimitada, colisões, movimentação pelo teclado, mouse look e um cubo vermelho flutuante como corpo provisório do jogador.
+Protótipo minimalista em **primeira pessoa**, com WebGL puro e módulos JavaScript nativos. Inclui uma arena delimitada, colisões, movimentação pelo teclado, mouse look e um personagem low poly com corpo, botas e braços articulados nas armas de fogo e no melee.
 
 ## Para rodar
 Linux: ```python3 -m http.server 8000 --bind 127.0.0.1```
@@ -41,7 +41,7 @@ Não há dependências externas, CDN, instalação de pacotes ou etapa de build.
 | Pausar / retomar | `P` |
 | Liberar o cursor e pausar | `Esc` |
 | Entrar / retomar capturando o mouse | Botão na tela |
-| Ver o corpo provisório | Olhar para baixo |
+| Ver o corpo e as pernas | Olhar para baixo |
 
 Perder o foco da janela ou ocultar a aba pausa o jogo e limpa as entradas. A retomada preserva posição e orientação, sem reaplicar teclas antigas. O movimento é restrito ao plano XZ; olhar para cima não altera a altura do jogador.
 
@@ -69,6 +69,7 @@ zombots-uece-edition-2-the-revenge/
 │   └── game/
 │       ├── game_main.js     # Inicialização, estados, atualização e renderização
 │       ├── player.js        # Posição, movimento, corpo, colisão e vínculo da câmera
+│       ├── character_model.js # Corpo, braços e luvas facetados compartilhados
 │       ├── enemy.js         # Inimigos visuais: zumbi, robô e Zombot
 │       └── level.js         # Geometria e colisores derivados dos dados do mapa
 ├── assets/
@@ -94,9 +95,9 @@ O `Player` é responsável pela posição. A câmera controla apenas orientaçã
 
 O pitch é limitado a ±89°. A velocidade normal é 3 unidades/s e a corrida, 5,5 unidades/s. O loop limita deltas de tempo a 50 ms para evitar saltos após interrupções; sob taxas inferiores a 20 FPS a simulação pode desacelerar.
 
-O cubo tem lado **0,80**, centro a **0,80** do chão e base a **0,40**. Sua altura é fixa: “flutuante” não inclui oscilação ou física vertical. A câmera fica acima dele; o corpo acompanha o yaw e aparece ao olhar para baixo. Existe somente a visão em primeira pessoa.
+O corpo usa peças facetadas fechadas: camisa verde, colete, cinto, calça, joelheiras e botas. A origem fica no chão; o corpo acompanha o yaw e aparece ao olhar para baixo. As pernas acompanham o deslocamento efetivo, parando quando o jogador fica bloqueado. A cabeça é omitida na malha FPS para não envolver a câmera. Existe somente a visão em primeira pessoa.
 
-O colisor é independente da malha: uma AABB de aproximadamente **1,13 × 1,80 × 1,13**, desde o chão, que também cobre os cantos do cubo quando ele gira. A varredura por eixo bloqueia paredes finas; subpassos e resolução separada permitem deslizar ao longo das paredes.
+O colisor é independente da malha: uma AABB de aproximadamente **1,13 × 1,80 × 1,13**, desde o chão, mantida independente das proporções visuais e da animação. A varredura por eixo bloqueia paredes finas; subpassos e resolução separada permitem deslizar ao longo das paredes.
 
 ### Mapa
 
@@ -111,13 +112,13 @@ O colisor é independente da malha: uma AABB de aproximadamente **1,13 × 1,80 �
 Formas: `"rect": [x0, z0, x1, z1]` ou `"circle": [cx, cz, raio]`. As cores e alturas ficam em `materials`; uma superfície com `"decal": true` (faixas) não altera a altura do chão. Onde duas superfícies se sobrepõem vale a mais alta, igual ao que aparece na tela. Para editar, altere o JSON e recarregue. Mantenha o spawn livre; o `y` dele é ajustado ao chão automaticamente.
 Paredes e obstáculos geram malhas e colisores a partir das mesmas dimensões. Para editar o nível, altere o JSON e recarregue a página. Mantenha dimensões positivas, obstáculos apoiados no chão e o spawn livre dentro da arena. O chão é a referência do salto: a gravidade traz o jogador de volta a Y = 0; não há suporte a plataformas.
 
-### Substituir o placeholder pelo modelo do Blender
+### Ajustar o personagem
 
-1. Exporte um OBJ com eixo vertical **Y**, frente em **−Z**, normais e faces trianguladas, acompanhado de MTL com cor difusa `Kd`.
-2. Coloque os arquivos em `assets/player/`; a referência `mtllib` do OBJ deve apontar para o MTL relativo à mesma pasta.
-3. Atualize o caminho passado a `OBJLoader.load` em `src/game/game_main.js`.
-4. Ajuste `bodySize` e `bodyHeight` em `src/game/player.js` para a escala e origem do modelo. O cubo atual usa uma malha unitária centrada na origem.
-5. Confira o enquadramento ao olhar para baixo e ajuste o colisor separadamente se as proporções do robô mudarem.
+`src/game/character_model.js` define a paleta, a geometria facetada e as proporções de `PlayerBody` e `FirstPersonArms`. As peças têm chanfros, tampas e normais por face. O corpo é desenhado no mundo e os braços na passagem FPS. Os buffers são reutilizados e liberados ao encerrar o jogo.
+
+Cada arma em `src/game/weapons.js` tem duas pegadas (`grips`) em coordenadas do OBJ, com rotação da mão. O loader exclui os objetos `ArmModel` e `ArmModel.001` dos assets originais, mantendo a geometria das armas. Os braços compartilhados ligam ombro, cotovelo e punho às novas mãos. O soco e a katana usam a mesma roupa e luvas; a katana tem pegada com duas mãos que acompanha o corte.
+
+Os arquivos `assets/player/cube.obj` e `cube.mtl` permanecem apenas como fixtures de teste do loader; não são mais carregados pelo jogo.
 
 O carregador aceita índices positivos/negativos e triangula faces convexas. Se faltarem normais, calcula normais por triângulo. UVs presentes nos índices são ignorados; texturas, mapas de materiais e animações não são carregados.
 
@@ -135,7 +136,7 @@ Para conferir a integração no navegador:
 
 1. Entre, movimente-se com WASD/setas e gire a câmera com o mouse.
 2. Corra contra as quatro paredes e os dois blocos; teste também diagonais e cantos.
-3. Olhe para cima/baixo e confirme que a altura permanece fixa e o corpo vermelho é visível abaixo.
+3. Olhe para cima/baixo e confira o tronco, as pernas e as botas; caminhe, pare e pule para conferir o acompanhamento do corpo.
 4. Pause com P/Esc, retome e alterne de janela enquanto segura uma tecla; o movimento deve parar sem salto ao retornar.
 5. Redimensione a janela e confira perspectiva, resolução e ausência de erros no console.
 
@@ -147,7 +148,7 @@ O protótipo inclui três inimigos: zumbi verde, robô azul e Zombot preto. Eles
 
 ### Armas e projéteis
 
-A referência atualizada `cg-project3d-uece/assets/` fornece quatro modelos, copiados com seus MTL para `assets/weapons/`: `armapistola.obj`, `arma.obj` (AKM), `armaescopeta.obj` e `armasniper.obj`. A esfera `esfera.obj` é o projétil. Os modelos incluem braços e preservam os materiais de cores sólidas.
+A referência atualizada `cg-project3d-uece/assets/` fornece quatro modelos, copiados com seus MTL para `assets/weapons/`: `armapistola.obj`, `arma.obj` (AKM), `armaescopeta.obj` e `armasniper.obj`. A esfera `esfera.obj` é o projétil. Os braços embutidos são excluídos no carregamento e substituídos pelo modelo compartilhado do personagem; os materiais de cores sólidas das armas são preservados.
 
 `src/game/weapons.js` concentra o inventário e as transformações individuais de escala, posição e rotação. Todos apontam originalmente para +X e são girados para −Z. A boca de cada cano tem uma coordenada local própria, transformada para o mundo com a mesma matriz usada no desenho da arma e a orientação da câmera. Somente o slot selecionado é desenhado, em uma passagem FPS após o cenário; os projéteis respeitam a profundidade do mundo.
 
@@ -169,7 +170,7 @@ O slot melee começa no **soco**. `Q` alterna entre soco e katana e coloca a op�
 
 `F` executa um golpe por pressionamento: avanço do punho no soco (0,38 s) ou preparação e corte diagonal na katana (0,62 s). Também funciona como golpe rápido enquanto uma arma de fogo está equipada: ela fica oculta durante a animação e retorna ao terminar. Durante o melee não há disparos; segurar `F` não repete golpes. Trocar com `Q` durante uma animação seleciona o próximo golpe sem modificar o que já começou. Pausar cancela a animação e interrompe seu som.
 
-`src/game/melee.js` controla seleção e tempo dos golpes; `src/game/melee_view.js` constrói as mãos com luvas, mangas e a katana com guarda, cabo e lâmina curva facetada. As malhas usam cores sólidas, iluminação e a mesma passagem FPS das armas de fogo. Os buffers são compartilhados entre quadros e liberados com o restante das armas.
+`src/game/melee.js` controla seleção e tempo dos golpes; `src/game/melee_view.js` utiliza os braços e mãos de `character_model.js` e constrói a katana com guarda, cabo e lâmina curva facetada. As malhas usam cores sólidas, iluminação e a mesma passagem FPS das armas de fogo. Os buffers são compartilhados entre quadros e liberados com o restante das armas.
 
 Esta etapa é somente visual e sonora: **não implementa hitboxes, detecção de acerto ou dano**. Os inimigos mantêm o comportamento existente, mesmo ao receber golpes visualmente.
 

@@ -1,6 +1,6 @@
 import { initGL, resizeCanvas } from '../engine/gl.js';
 import { Shaders } from '../engine/shaders.js';
-import { OBJLoader } from '../engine/obj_loader.js';
+import { PlayerBody } from './character_model.js';
 import { Mesh } from '../engine/mesh.js';
 import { InputHandler } from '../engine/input.js';
 import { intersectsAABB } from '../engine/collision.js';
@@ -27,12 +27,9 @@ export class Game {
             this.fail(new Error('O contexto gráfico foi perdido. Recarregue a página para continuar.'));
         }, { signal: this.events.signal });
 
-        const [level, playerMesh] = await Promise.all([
-            Level.load(this.gl, new URL('../../assets/map/test_level.json', import.meta.url)),
-            OBJLoader.load(this.gl, new URL('../../assets/player/cube.obj', import.meta.url)),
-        ]);
+        const level = await Level.load(this.gl, new URL('../../assets/map/test_level.json', import.meta.url));
         this.level = level;
-        this.player = new Player(level.spawn, playerMesh);
+        this.player = new Player(level.spawn, new PlayerBody(this.gl));
         this.groundHeightAt = (x, z, y) => this.level.groundHeight(x, z, y);
         this.player.position.y = this.groundHeightAt(this.player.position.x, this.player.position.z);
         this.player.syncCamera();
