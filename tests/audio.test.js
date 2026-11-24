@@ -79,3 +79,16 @@ test('soco e katana usam pools limitados e obedecem mute e pausa', () => {
         audio.setPlaying(true);
     }
 });
+
+test('volume geral escala o volume próprio de cada efeito e respeita limites', () => {
+    const { audio, elements } = setup();
+    const before = elements.map(e => e.volume);
+    audio.setMasterVolume(0.5);
+    elements.forEach((e, i) => assert.ok(Math.abs(e.volume - before[i] * 0.5) < 1e-12));
+    audio.setMasterVolume(0);
+    assert.ok(elements.every(e => e.volume === 0));
+    audio.setMasterVolume(7);
+    elements.forEach((e, i) => assert.ok(Math.abs(e.volume - before[i]) < 1e-12));
+    audio.setMasterVolume(NaN);
+    assert.equal(audio.masterVolume, 1);
+});
