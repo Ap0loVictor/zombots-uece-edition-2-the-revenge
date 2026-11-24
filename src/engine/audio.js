@@ -5,6 +5,8 @@ export class GameAudio {
         this.active = false;
         this.muted = false;
         this.pools = new Map();
+        this.baseVolumes = new Map(); // volume de cada elemento com o volume geral em 100%
+        this.masterVolume = 1;
         for (const [name, count, volume, extension = 'mp3'] of [
             ['pistola', 4, 0.3], ['akm', 4, 0.3], ['escopeta', 4, 0.3],
             ['sniper', 4, 0.3],
@@ -14,6 +16,7 @@ export class GameAudio {
                 const audio = createAudio(new URL(`../../assets/audio/${name}.${extension}`, import.meta.url).href);
                 audio.preload = 'auto';
                 audio.volume = volume;
+                this.baseVolumes.set(audio, volume);
                 audio.loop = false;
                 return audio;
             });
@@ -37,6 +40,13 @@ export class GameAudio {
         if (!active) this.stop();
     }
 
+    // Volume geral de 0 a 1, aplicado sobre o volume próprio de cada efeito.
+    setMasterVolume(value) {
+        const master = Math.min(1, Math.max(0, Number.isFinite(value) ? value : 1));
+        this.masterVolume = master;
+        for (const [audio, base] of this.baseVolumes) audio.volume = base * master;
+    }
+
     toggleMute() {
         this.muted = !this.muted;
         if (this.muted) this.stop();
@@ -57,5 +67,6 @@ export class GameAudio {
             audio.load();
         }
         this.pools.clear();
+        this.baseVolumes.clear();
     }
 }
