@@ -9,12 +9,17 @@ import { Player } from './player.js';
 import { WeaponSystem } from './weapons.js';
 import { GameAudio } from '../engine/audio.js';
 import { Enemy } from './enemy.js';
+import { MenuCamera } from './menu_camera.js';
+import { MenuController } from './menu.js';
+import { DEFAULT_SETTINGS, fovRadians, loadSettings, lookSpeedFor, saveSettings } from './settings.js';
 
 export class Game {
     constructor(canvas, ui) {
         this.canvas = canvas;
         this.ui = ui;
         this.state = 'loading';
+        this.menuCamera = new MenuCamera();
+        this.settings = { ...DEFAULT_SETTINGS };
         this.events = new AbortController();
         this.frame = this.frame.bind(this);
     }
@@ -22,6 +27,14 @@ export class Game {
     async init() {
         this.gl = initGL(this.canvas);
         this.programInfo = Shaders.createProgram(this.gl);
+        // O menu é montado antes do carregamento dos assets: Jogar fica desabilitado até tudo estar pronto.
+        this.settings = loadSettings();
+        this.menu = new MenuController(this.ui.menu, {
+            settings: this.settings,
+            onSettingsChange: settings => this.updateSettings(settings),
+            onStart: () => this.enter(),
+        });
+        this.menu.setLoading(true);
         this.canvas.addEventListener('webglcontextlost', event => {
             event.preventDefault();
             this.fail(new Error('O contexto gráfico foi perdido. Recarregue a página para continuar.'));
@@ -33,8 +46,10 @@ export class Game {
         this.groundHeightAt = (x, z, y) => this.level.groundHeight(x, z, y);
         this.player.position.y = this.groundHeightAt(this.player.position.x, this.player.position.z);
         this.player.syncCamera();
+        this.applySettings();
         this.weapons = await WeaponSystem.load(this.gl);
         this.audio = new GameAudio();
+        this.applySettings();
         this.weapons.onShoot = weapon => this.audio.play(weapon.sound);
         this.weapons.melee.onSwing = weapon => this.audio.play(weapon.sound);
         this.enemyMesh = Mesh.box(this.gl);
@@ -50,19 +65,22 @@ export class Game {
 
         this.input = new InputHandler(this.canvas, {
             onLockChange: locked => this.setPlaying(locked),
-            onPause: () => this.state === 'playing' ? this.pause() : this.enter(),
+            // P pausa e retoma; no menu inicial só o botão Jogar começa a partida.
+            onPause: () => {
+                if (this.state === 'playing') this.pause();
+                else if (this.state === 'paused') this.enter();
+            },
             onError: message => {
                 if (this.state === 'error') return;
                 this.pause();
-                this.ui.description.textContent = message;
+                this.menu.notify(message);
             },
         });
         const options = { signal: this.events.signal };
-        this.ui.button.addEventListener('click', () => this.enter(), options);
-        this.canvas.addEventListener('click', () => this.enter(), options);
         this.state = 'ready';
-        this.ui.button.disabled = false;
-        this.showOverlay('Campus UECE', 'Explore o mapa com Shift para correr e Espaço para pular. Encontre o zumbi verde, o robô azul e o Zombot preto.');
+        // Menu principal: o campus é desenhado ao fundo (câmera em órbita) até o jogador clicar em Jogar.
+        this.menu.setLoading(false);
+        this.ui.status.textContent = 'MENU';
 
         this.lastTime = performance.now();
         this.animationFrame = requestAnimationFrame(this.frame);
@@ -84,14 +102,17 @@ export class Game {
         if (playing) {
             this.state = 'playing';
             this.lastTime = performance.now();
-            this.ui.overlay.hidden = true;
+            this.menu?.close();
+            this.ui.hud.hidden = false;
             this.ui.crosshair.hidden = false;
             this.updateAmmoHUD();
             this.ui.status.textContent = 'EM JOGO';
         } else if (this.state === 'playing') {
             this.state = 'paused';
-            this.ui.button.textContent = 'Continuar';
-            this.showOverlay('Pausado', 'Clique em Continuar ou pressione P para voltar à arena.');
+            if (this.ui.ammo) this.ui.ammo.hidden = true;
+            this.ui.crosshair.hidden = true;
+            this.ui.status.textContent = 'PAUSADO';
+            this.menu?.open({ paused: true });
         }
     }
 
@@ -100,13 +121,32 @@ export class Game {
         this.setPlaying(false);
     }
 
+    // Tela de erro fatal (o menu e a pausa usam MenuController).
     showOverlay(title, description) {
         this.ui.title.textContent = title;
         this.ui.description.textContent = description;
+        this.menu?.close();
+        this.ui.menu.hidden = true;
         this.ui.overlay.hidden = false;
         this.ui.crosshair.hidden = true;
         if (this.ui.ammo) this.ui.ammo.hidden = true;
-        this.ui.status.textContent = this.state === 'ready' ? 'PRONTO' : 'PAUSADO';
+    }
+
+    updateSettings(settings) {
+        this.settings = settings;
+        saveSettings(settings);
+        this.applySettings();
+    }
+
+    // Aplica as configurações ao que já existe; pode ser chamado de novo quando player/áudio forem criados.
+    applySettings() {
+        const settings = this.settings;
+        if (this.player) {
+            this.player.camera.lookSpeed = lookSpeedFor(settings);
+            this.player.camera.fov = fovRadians(settings);
+        }
+        this.audio?.setMasterVolume(settings.volume / 100);
+        if (this.ui.hints) this.ui.hints.hidden = !settings.showHints;
     }
 
     frame(time) {
@@ -164,11 +204,14 @@ export class Game {
         resizeCanvas(gl);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.useProgram(this.programInfo.program);
-        gl.uniformMatrix4fv(this.programInfo.uniforms.u_view, false, this.player.camera.getViewMatrix());
+        const inMenu = this.state === 'ready';
+        const camera = inMenu ? this.menuCamera.at(elapsed) : this.player.camera;
+        gl.uniformMatrix4fv(this.programInfo.uniforms.u_view, false, camera.getViewMatrix());
         gl.uniformMatrix4fv(this.programInfo.uniforms.u_projection, false,
-            this.player.camera.getProjectionMatrix(gl.canvas.width / gl.canvas.height));
+            camera.getProjectionMatrix(gl.canvas.width / gl.canvas.height));
         this.level.draw(this.programInfo);
         for (const enemy of this.enemies) enemy.draw(this.enemyMesh, this.programInfo, elapsed);
+        if (inMenu) return; // sem corpo, armas ou projéteis de primeira pessoa no menu
         this.player.draw(this.programInfo);
         this.weapons.drawProjectiles(this.programInfo);
         this.weapons.drawWeapon(gl, this.programInfo);
@@ -182,13 +225,13 @@ export class Game {
         this.input?.unlock();
         this.showOverlay('Não foi possível iniciar ou continuar', error.message);
         this.ui.status.textContent = 'ERRO';
-        this.ui.button.disabled = true;
     }
 
     dispose() {
         cancelAnimationFrame(this.animationFrame);
         this.events.abort();
         this.input?.dispose();
+        this.menu?.dispose();
         this.level?.dispose();
         this.player?.mesh.dispose();
         this.enemyMesh?.dispose();

@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#131c26">
     <link rel="icon" href="data:,">
-    <title>Zombots · Arena de testes</title>
+    <title>Zombots: UECE Edition 2 – The Revenge</title>
     <style>
         :root { color-scheme: dark; font-family: system-ui, sans-serif; color: #eef3f5; }
         * { box-sizing: border-box; }
         body { margin: 0; overflow: hidden; background: #131c26; }
         #game-canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; }
+        [hidden] { display: none !important; }
+
+        /* HUD durante o jogo */
         .hud { position: fixed; inset: 0; pointer-events: none; padding: 24px 28px; }
         header { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
         .brand { font-weight: 800; font-size: 20px; letter-spacing: .12em; }
@@ -30,30 +33,79 @@
         #ammo-hint { min-height: 12px; margin-top: 6px; color: #f4d35e; font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
         #ammo[data-low="true"] #ammo-count { color: #f4d35e; }
         #crosshair { position: fixed; left: 50%; top: 50%; width: 5px; height: 5px; transform: translate(-50%, -50%); background: #fff; border-radius: 50%; box-shadow: 0 0 2px 1px #0008; pointer-events: none; }
-        #overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: #0b131bb3; }
-        [hidden] { display: none !important; }
-        .panel { width: min(100%, 430px); padding: 32px; background: #18232ef2; border: 1px solid #60717e66; border-radius: 12px; box-shadow: 0 20px 80px #0005; }
+
+        /* Botões e elementos comuns */
+        button { width: 100%; border: 0; border-radius: 6px; padding: 13px 18px; background: #eb5b50; color: #fff; font: 600 14px system-ui, sans-serif; cursor: pointer; }
+        button:hover:not(:disabled) { background: #f47165; }
+        button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+        button:disabled { opacity: .55; cursor: wait; }
+        button.secondary { background: #ffffff14; border: 1px solid #ffffff2e; }
+        button.secondary:hover:not(:disabled) { background: #ffffff26; }
+        kbd { display: inline-block; min-width: 26px; padding: 3px 8px; border: 1px solid #ffffff40; border-bottom-width: 3px; border-radius: 5px; background: #ffffff12; text-align: center; font: 600 12px ui-monospace, monospace; }
         .eyebrow { margin: 0 0 14px; font: 11px ui-monospace, monospace; letter-spacing: .13em; color: #ff8b80; }
         h1 { margin: 0 0 14px; font-size: clamp(24px, 4vw, 32px); letter-spacing: -.04em; }
-        #overlay-description { color: #c2cdd6; font-size: 14px; line-height: 1.65; margin: 0 0 24px; }
-        dl { display: grid; grid-template-columns: 1fr auto; gap: 12px 20px; margin: 0 0 28px; font-size: 13px; }
-        dt { color: #aebdc7; }
-        dd { margin: 0; text-align: right; }
-        kbd { font: 12px ui-monospace, monospace; }
-        button { width: 100%; border: 0; border-radius: 6px; padding: 13px 18px; background: #eb5b50; color: #fff; font: 600 14px system-ui, sans-serif; cursor: pointer; }
-        button:hover { background: #f47165; }
-        button:focus-visible { outline: 3px solid white; outline-offset: 4px; }
-        button:disabled { opacity: .5; cursor: wait; }
-        .note { margin: 14px 0 0; color: #9cafbb; font-size: 11px; text-align: center; }
-        noscript { position: fixed; inset: 0; z-index: 2; background: #18232e; padding: 40px; }
-        @media (max-width: 500px) { .hud { padding: 18px; } .controls { left: 18px; right: 18px; font-size: 11px; } .panel { padding: 24px; } }
+
+        /* Erro fatal */
+        #overlay { position: fixed; inset: 0; z-index: 3; display: grid; place-items: center; padding: 24px; background: #0b131bd9; }
+        .panel { width: min(100%, 430px); padding: 32px; background: #18232ef2; border: 1px solid #60717e66; border-radius: 12px; box-shadow: 0 20px 80px #0005; }
+        #overlay-description { color: #c2cdd6; font-size: 14px; line-height: 1.65; margin: 0; }
+
+        /* Menu principal e de pausa */
+        #main-menu { position: fixed; inset: 0; z-index: 1; display: grid; place-items: center; padding: 24px; overflow-y: auto;
+            background: radial-gradient(ellipse at center, #0b131b99 0%, #0b131bdb 100%); }
+        .menu-view { width: 100%; }
+        .menu-view[data-view="home"] { width: min(100%, 820px); text-align: center; }
+        .menu-title { margin: 0; font-size: clamp(48px, 12vw, 110px); font-weight: 900; letter-spacing: .14em; line-height: 1; text-shadow: 0 6px 40px #000a; white-space: nowrap; margin-right: -.14em; }
+        .menu-title span { color: #ff675c; }
+        .menu-edition { margin: 14px 0 0; font: 600 clamp(11px, 2vw, 15px) ui-monospace, monospace; letter-spacing: .3em; color: #ffb3ab; text-transform: uppercase; }
+        .menu-paused { display: inline-block; margin: 16px 0 0; padding: 4px 12px; border: 1px solid #ffffff40; border-radius: 99px; font: 600 11px ui-monospace, monospace; letter-spacing: .2em; text-transform: uppercase; background: #ffffff12; }
+        .menu-nav { display: grid; gap: 10px; width: min(100%, 340px); margin: 36px auto 0; }
+        .menu-nav button { padding: 14px 18px; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; }
+        .menu-nav button[data-action="start"] { padding: 17px 18px; font-size: 19px; margin-bottom: 8px; }
+        .menu-message { width: min(100%, 340px); margin: 18px auto 0; color: #ffb3ab; font-size: 13px; line-height: 1.5; }
+        .menu-hint { margin: 18px 0 0; color: #9cafbb; font-size: 12px; }
+        .menu-footer { margin: 34px 0 0; color: #8397a4; font-size: 11px; letter-spacing: .08em; }
+
+        .menu-panel { width: min(100%, 640px); margin: auto; padding: 32px; background: #18232ef2; border: 1px solid #60717e66; border-radius: 12px; box-shadow: 0 20px 80px #0005; text-align: left; }
+        .menu-panel h2 { margin: 0 0 22px; font-size: clamp(24px, 4vw, 30px); letter-spacing: -.03em; }
+        .menu-panel h3 { margin: 0 0 6px; font: 600 11px ui-monospace, monospace; letter-spacing: .16em; text-transform: uppercase; color: #ff8b80; }
+        .control-group + .control-group { margin-top: 24px; }
+        .menu-panel .back { margin-top: 28px; }
+        .menu-panel[data-view="credits"] { text-align: center; }
+
+        .setting { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px 16px; padding: 14px 0; border-bottom: 1px solid #ffffff14; }
+        .setting label { font-size: 14px; }
+        .setting output { font: 600 13px ui-monospace, monospace; color: #ffb3ab; }
+        .setting input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: #eb5b50; }
+        .setting.toggle input { width: 20px; height: 20px; accent-color: #eb5b50; }
+        .setting-note { margin: 14px 0 0; color: #9cafbb; font-size: 12px; }
+        .settings-actions { display: grid; gap: 10px; margin-top: 22px; }
+        .settings-actions .back { margin-top: 0; }
+
+        .control-list { margin: 0; }
+        .control-row { display: grid; grid-template-columns: minmax(250px, 46%) 1fr; gap: 6px 16px; align-items: center; padding: 9px 0; border-bottom: 1px solid #ffffff14; font-size: 13px; }
+        .control-row dt { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+        .control-row dd { margin: 0; color: #c2cdd6; line-height: 1.45; }
+        .key-or { color: #8397a4; font-size: 11px; padding: 0 3px; }
+        .control-tips { margin: 22px 0 0; padding-left: 18px; color: #9cafbb; font-size: 12px; line-height: 1.7; }
+
+        [data-render="lore"] p { margin: 0 0 14px; color: #d3dce2; font-size: 15px; line-height: 1.75; }
+        .credits-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 12px; font-size: clamp(20px, 4vw, 26px); font-weight: 700; }
+        .credits-course { margin: 30px 0 0; color: #ffb3ab; font: 600 15px ui-monospace, monospace; letter-spacing: .08em; }
+
+        noscript { position: fixed; inset: 0; z-index: 4; background: #18232e; padding: 40px; }
+        @media (max-width: 560px) {
+            .hud { padding: 18px; } .controls { left: 18px; right: 18px; font-size: 11px; }
+            .panel, .menu-panel { padding: 22px; }
+            .control-row { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
     <canvas id="game-canvas" aria-label="Arena 3D em primeira pessoa">Seu navegador precisa oferecer suporte a WebGL.</canvas>
-    <div class="hud">
+    <div class="hud" id="hud" hidden>
         <header>
-            <div><div class="brand">ZOM<span>BOTS</span></div><div class="subtitle">UECE · Arena de testes</div></div>
+            <div><div class="brand">ZOM<span>BOTS</span></div><div class="subtitle">UECE Edition 2 · The Revenge</div></div>
             <span id="status" role="status">CARREGANDO</span>
         </header>
         <div id="ammo" hidden aria-label="Munição da arma equipada">
@@ -62,30 +114,80 @@
             <div class="ammo-reload-track" aria-hidden="true"><div id="ammo-progress"></div></div>
             <div id="ammo-hint"></div>
         </div>
-        <p class="controls">WASD / setas · mover &nbsp; Mouse · olhar &nbsp; Shift · correr &nbsp; Espaço · pular &nbsp; 1–4 · armas de fogo &nbsp; Q · soco / katana &nbsp; F · golpe rápido &nbsp; M · som &nbsp; Botão esquerdo · disparar / golpear &nbsp; R · recarregar &nbsp; P / Esc · pausar</p>
+        <p class="controls" id="hud-hints">WASD / setas · mover &nbsp; Mouse · olhar &nbsp; Shift · correr &nbsp; Espaço · pular &nbsp; 1–4 · armas de fogo &nbsp; Q · soco / katana &nbsp; F · golpe rápido &nbsp; M · som &nbsp; Botão esquerdo · disparar / golpear &nbsp; R · recarregar &nbsp; P / Esc · pausar</p>
     </div>
     <div id="crosshair" hidden aria-hidden="true"></div>
-    <section id="overlay" aria-labelledby="overlay-title">
+
+    <main id="main-menu">
+        <section class="menu-view" data-view="home" aria-labelledby="menu-title">
+            <h1 class="menu-title" id="menu-title">ZOM<span>BOTS</span></h1>
+            <p class="menu-edition">UECE Edition 2 · The Revenge</p>
+            <p class="menu-paused" data-paused-label hidden>Pausado</p>
+            <nav class="menu-nav" aria-label="Menu principal">
+                <button type="button" data-action="start" disabled>Carregando…</button>
+                <button type="button" class="secondary" data-open="settings">Configurações</button>
+                <button type="button" class="secondary" data-open="lore">Lore</button>
+                <button type="button" class="secondary" data-open="controls">Controles</button>
+                <button type="button" class="secondary" data-open="credits">Créditos</button>
+            </nav>
+            <p class="menu-message" data-menu-message role="alert" hidden></p>
+            <p class="menu-hint">Teclado e mouse · o cursor será capturado</p>
+            <p class="menu-footer">Computação Gráfica - Uece</p>
+        </section>
+
+        <section class="menu-view menu-panel" data-view="settings" aria-labelledby="settings-title" hidden>
+            <h2 id="settings-title">Configurações</h2>
+            <div class="setting">
+                <label for="set-sensitivity">Sensibilidade do mouse</label>
+                <output data-output="sensitivity" for="set-sensitivity"></output>
+                <input id="set-sensitivity" type="range" data-setting="sensitivity">
+            </div>
+            <div class="setting">
+                <label for="set-fov">Campo de visão</label>
+                <output data-output="fov" for="set-fov"></output>
+                <input id="set-fov" type="range" data-setting="fov">
+            </div>
+            <div class="setting">
+                <label for="set-volume">Volume dos efeitos</label>
+                <output data-output="volume" for="set-volume"></output>
+                <input id="set-volume" type="range" data-setting="volume">
+            </div>
+            <div class="setting toggle">
+                <label for="set-hints">Mostrar dicas de controles na tela</label>
+                <input id="set-hints" type="checkbox" data-setting="showHints">
+            </div>
+            <p class="setting-note">As alterações valem na hora e ficam salvas neste navegador.</p>
+            <div class="settings-actions">
+                <button type="button" class="secondary" data-action="reset-settings">Restaurar padrão</button>
+                <button type="button" class="back" data-back>Voltar</button>
+            </div>
+        </section>
+
+        <section class="menu-view menu-panel" data-view="lore" aria-labelledby="lore-title" hidden>
+            <h2 id="lore-title">Lore</h2>
+            <div data-render="lore"></div>
+            <button type="button" class="back" data-back>Voltar</button>
+        </section>
+
+        <section class="menu-view menu-panel" data-view="controls" aria-labelledby="controls-title" hidden>
+            <h2 id="controls-title">Controles</h2>
+            <div data-render="controls"></div>
+            <button type="button" class="back" data-back>Voltar</button>
+        </section>
+
+        <section class="menu-view menu-panel" data-view="credits" aria-labelledby="credits-title" hidden>
+            <h2 id="credits-title">Créditos</h2>
+            <div data-render="credits"></div>
+            <button type="button" class="back" data-back>Voltar</button>
+        </section>
+
+    </main>
+
+    <section id="overlay" aria-labelledby="overlay-title" hidden>
         <div class="panel">
-            <p class="eyebrow">PROTÓTIPO / PRIMEIRA PESSOA</p>
-            <h1 id="overlay-title">Preparando a arena</h1>
-            <p id="overlay-description">Carregando o mapa e o jogador…</p>
-            <dl>
-                <dt>Mover</dt><dd><kbd>W A S D</kbd> / <kbd>↑ ← ↓ →</kbd></dd>
-                <dt>Olhar</dt><dd>Mouse</dd>
-                <dt>Correr</dt><dd><kbd>Shift</kbd> segurado</dd>
-                <dt>Pular</dt><dd><kbd>Espaço</kbd></dd>
-                <dt>Selecionar arma</dt><dd><kbd>1</kbd> Pistola · <kbd>2</kbd> AKM · <kbd>3</kbd> Escopeta · <kbd>4</kbd> Sniper</dd>
-                <dt>Ativar / silenciar áudio</dt><dd><kbd>M</kbd></dd>
-                <dt>Alternar soco / katana</dt><dd><kbd>Q</kbd></dd>
-                <dt>Golpe melee selecionado</dt><dd><kbd>F</kbd></dd>
-                <dt>Disparar / golpear</dt><dd>Botão esquerdo do mouse · segure para rajada com AKM</dd>
-                <dt>Recarregar</dt><dd><kbd>R</kbd> · automático ao esvaziar</dd>
-                <dt>Pausar / retomar</dt><dd><kbd>P</kbd></dd>
-                <dt>Liberar o cursor</dt><dd><kbd>Esc</kbd></dd>
-            </dl>
-            <button id="enter-button" type="button" disabled>Entrar</button>
-            <p class="note">Use teclado e mouse. Clique para capturar o cursor.</p>
+            <p class="eyebrow">ZOMBOTS</p>
+            <h1 id="overlay-title">Erro</h1>
+            <p id="overlay-description"></p>
         </div>
     </section>
     <noscript>Ative o JavaScript para iniciar o protótipo Zombots.</noscript>

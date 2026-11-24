@@ -21,7 +21,7 @@ Na raiz do projeto, inicie um servidor HTTP local:
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Abra **http://127.0.0.1:8000** em um navegador desktop com WebGL, teclado e mouse. Clique em **Entrar** para capturar o cursor. Não abra `index.html` diretamente por `file://`: os módulos JavaScript e o carregamento de OBJ/MTL/JSON precisam do servidor HTTP.
+Abra **http://127.0.0.1:8000** em um navegador desktop com WebGL, teclado e mouse. O jogo abre no **menu principal**, com o nome do jogo e o botão **Jogar** sobre o campus girando ao fundo. Clique em **Jogar** (ou pressione `Enter`) para capturar o cursor e começar. Não abra `index.html` diretamente por `file://`: os módulos JavaScript e o carregamento de OBJ/MTL/JSON precisam do servidor HTTP.
 
 Não há dependências externas, CDN, instalação de pacotes ou etapa de build. Node.js é necessário apenas para executar os testes.
 
@@ -42,7 +42,8 @@ Não há dependências externas, CDN, instalação de pacotes ou etapa de build.
 | Recarregar (reserva infinita) | `R` ou automaticamente ao esvaziar |
 | Pausar / retomar | `P` |
 | Liberar o cursor e pausar | `Esc` |
-| Entrar / retomar capturando o mouse | Botão na tela |
+| Começar / retomar capturando o mouse | Botão **Jogar** (menu) / **Continuar** (pausa) |
+| Navegar no menu | Mouse, `Tab`, `↑`/`↓`; `Esc` volta de uma aba |
 | Ver o corpo e as pernas | Olhar para baixo |
 
 Perder o foco da janela ou ocultar a aba pausa o jogo e limpa as entradas. A retomada preserva posição e orientação, sem reaplicar teclas antigas. O movimento é restrito ao plano XZ; olhar para cima não altera a altura do jogador.
@@ -84,6 +85,27 @@ zombots-uece-edition-2-the-revenge/
     ├── prototype.test.js    # Movimento, câmera, colisões, matrizes e OBJ/MTL
     └── level.test.js        # Altura do chão, calçadas, spawn e validação do mapa
 ```
+
+### Menu principal
+
+Ao abrir o localhost, o jogo mostra o **menu principal** (título *ZOMBOTS — UECE Edition 2 · The Revenge*) sobre o campus, desenhado em WebGL por uma câmera em perspectiva que orbita lentamente. As opções, nesta ordem:
+
+| Opção | O que faz |
+| --- | --- |
+| **Jogar** | Captura o mouse e começa a partida (fica desabilitado como *Carregando…* até os assets carregarem). |
+| **Configurações** | Sensibilidade do mouse (25–300 %), campo de visão (60–110°), volume dos efeitos (0–100 %) e mostrar/ocultar as dicas de controles na tela. Valem na hora, ficam salvas no navegador (`localStorage`) e há o botão *Restaurar padrão*. |
+| **Lore** | A história do jogo. |
+| **Controles** | Todos os controles do jogador, agrupados em Movimento, Combate e Jogo. |
+| **Créditos** | Apolo Victor, Davi Jannsen, Gabriel Marques e *Computação Gráfica - Uece*. |
+
+Navegação: mouse, `Tab`, `↑`/`↓` entre botões e `Esc` para voltar de uma aba. O mesmo menu serve de **pausa** (`P` ou `Esc` durante o jogo): o botão principal vira **Continuar**, e as configurações e os controles ficam acessíveis sem sair da partida.
+
+O menu respeita as restrições do trabalho: é HTML/CSS comum (sem Canvas 2D e sem bibliotecas) e nada nele desenha a cena. O fundo é o campus renderizado pelo WebGL com as matrizes da engine.
+
+- `src/game/menu.js`: controlador do menu (abas, teclado, foco, ligação com as configurações).
+- `src/game/menu_content.js`: textos de Controles, Lore e Créditos (dados puros; edite aqui para mudar o conteúdo).
+- `src/game/settings.js`: limites, validação, persistência e conversão das configurações em valores da câmera.
+- `src/game/menu_camera.js`: câmera em órbita usada de fundo no menu inicial.
 
 ### Jogador e câmera
 

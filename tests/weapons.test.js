@@ -164,11 +164,15 @@ test('cadência bloqueia cliques rápidos e trocar de arma não reinicia o inter
 });
 
 test('HUD acompanha a arma, munição e recarga; pausa e melee ocultam o contador', () => {
-    const ui = Object.fromEntries(['ammo', 'ammoWeapon', 'ammoCount', 'ammoCapacity', 'ammoProgress', 'ammoHint', 'overlay', 'crosshair', 'status', 'title', 'description', 'button'].map(key => [key, { dataset: {}, style: {}, setAttribute() {} }]));
+    const ui = Object.fromEntries(['ammo', 'ammoWeapon', 'ammoCount', 'ammoCapacity', 'ammoProgress', 'ammoHint', 'menu', 'hud', 'overlay', 'crosshair', 'status', 'title', 'description'].map(key => [key, { dataset: {}, style: {}, setAttribute() {} }]));
     const game = new Game({}, ui);
+    const menuEvents = [];
+    game.menu = { close: () => menuEvents.push('close'), open: options => menuEvents.push(options) };
     game.weapons = system();
     game.state = 'paused';
     game.setPlaying(true);
+    assert.deepEqual(menuEvents, ['close']);
+    assert.equal(ui.hud.hidden, false);
     assert.equal(ui.ammo.hidden, false);
     assert.equal(ui.ammoCount.textContent, '12');
     assert.equal(ui.ammoCapacity.textContent, '12');
@@ -183,7 +187,10 @@ test('HUD acompanha a arma, munição e recarga; pausa e melee ocultam o contado
     const remaining = game.weapons.reloadRemaining;
     game.setPlaying(false);
     assert.equal(ui.ammo.hidden, true);
+    assert.deepEqual(menuEvents.at(-1), { paused: true });
     game.setPlaying(true);
+    assert.equal(menuEvents.at(-1), 'close');
+    assert.equal(ui.ammo.hidden, false);
     assert.equal(game.weapons.reloadRemaining, remaining);
     game.weapons.select(1);
     game.updateAmmoHUD();
@@ -198,6 +205,13 @@ test('HUD acompanha a arma, munição e recarga; pausa e melee ocultam o contado
     game.weapons.update(0, input('KeyQ'), new FPSCamera());
     game.updateAmmoHUD();
     assert.equal(ui.ammo.hidden, true);
+    game.weapons.select(0);
+    game.updateAmmoHUD();
+    assert.equal(ui.ammo.hidden, false);
+    game.showOverlay('Erro', 'Falha no contexto gráfico');
+    assert.equal(ui.ammo.hidden, true);
+    assert.equal(ui.menu.hidden, true);
+    assert.equal(ui.overlay.hidden, false);
 });
 
 test('recarga inclina a arma para baixo e retorna à pose original em diferentes FPS', () => {

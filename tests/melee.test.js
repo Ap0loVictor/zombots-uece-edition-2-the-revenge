@@ -107,7 +107,7 @@ test('pausar cancela o golpe e a retomada não repete o som', () => {
     let sounds = 0;
     weapons.melee.onSwing = () => sounds++;
     weapons.melee.swing();
-    const game = new Game({}, { button: {}, overlay: {}, crosshair: {}, status: {}, title: {}, description: {} });
+    const game = new Game({}, { button: {}, menu: {}, hud: {}, overlay: {}, crosshair: {}, status: {}, title: {}, description: {} });
     game.weapons = weapons;
     game.state = 'playing';
     game.setPlaying(false);
