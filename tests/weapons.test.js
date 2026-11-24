@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { WeaponSystem, WEAPON_DEFINITIONS, transformPoint } from '../src/game/weapons.js';
 import { FPSCamera } from '../src/engine/camera.js';
 import { OBJLoader } from '../src/engine/obj_loader.js';
+import { Game } from '../src/game/game_main.js';
+import { Matrix4 } from '../src/engine/matrix.js';
 
 const mesh = () => ({ draw() { this.draws = (this.draws ?? 0) + 1; }, dispose() { this.disposed = true; } });
 const input = (...keys) => { const pressed = new Set(keys); return { consumePress: key => pressed.delete(key) }; };
@@ -51,7 +53,9 @@ test('velocidade independe do FPS; disparos não seguem movimentos posteriores d
 });
 
 test('limites de distância, tempo e quantidade e descarte de buffers', () => {
-    const weapons = system(), camera = new FPSCamera();
+    const weapons = new WeaponSystem([mesh()], mesh(), [
+        { ...WEAPON_DEFINITIONS[0], magazineSize: 2000, shotInterval: 0 },
+    ]), camera = new FPSCamera();
     for (let i = 0; i < 1000; i++) weapons.shoot(camera);
     assert.equal(weapons.projectiles.length, weapons.maxProjectiles);
     weapons.update(weapons.maxDistance / weapons.speed, input(), camera);
@@ -61,6 +65,189 @@ test('limites de distância, tempo e quantidade e descarte de buffers', () => {
     assert.equal(weapons.projectiles.length, 0);
     weapons.dispose();
     assert.ok(weapons.bulletMesh.disposed && weapons.equipped.mesh.disposed);
+});
+
+test('cada arma esvazia seu pente, bloqueia disparos e recarrega com reserva infinita', () => {
+    const camera = new FPSCamera();
+    for (let index = 0; index < 4; index++) {
+        const weapons = system();
+        weapons.select(index);
+        const weapon = weapons.equipped;
+        let shots = 0;
+        weapons.onShoot = () => shots++;
+        assert.equal(weapon.ammo, [12, 30, 8, 5][index]);
+        for (let cycle = 0; cycle < 2; cycle++) {
+            for (let round = weapon.magazineSize; round > 0; round--) {
+                weapons.update(weapon.shotInterval, input('MouseLeft'), camera);
+                assert.equal(weapon.ammo, round - 1);
+            }
+            assert.equal(shots, (cycle + 1) * weapon.magazineSize);
+            assert.equal(weapons.reloading, true);
+            const count = weapons.projectiles.length;
+            assert.equal(weapons.shoot(camera), false);
+            assert.equal(weapons.projectiles.length, count);
+            weapons.update(weapon.reloadDuration - 0.01, input('MouseLeft'), camera);
+            assert.equal(weapon.ammo, 0);
+            weapons.update(0.01, input(), camera);
+            assert.equal(weapon.ammo, weapon.magazineSize);
+            assert.equal(weapons.reloading, false);
+        }
+    }
+});
+
+test('R recarrega pente parcial; trocar arma ou usar melee cancela sem repor munição', () => {
+    const weapons = system(), camera = new FPSCamera();
+    weapons.update(0, input('KeyR'), camera);
+    assert.equal(weapons.reloading, false);
+    weapons.update(0, input('MouseLeft'), camera);
+    assert.equal(weapons.equipped.ammo, 11);
+    weapons.update(0, input('KeyR', 'MouseLeft'), camera);
+    assert.equal(weapons.reloading, true);
+    weapons.update(0.5, input('KeyR'), camera);
+    near(weapons.reloadRemaining, 0.9);
+    weapons.update(0, input('Digit2'), camera);
+    assert.equal(weapons.reloading, false);
+    assert.equal(weapons.equipped.ammo, 30);
+    weapons.update(0, input('Digit1', 'KeyR'), camera);
+    assert.equal(weapons.equipped.ammo, 11);
+    weapons.update(0, input('KeyF'), camera);
+    assert.equal(weapons.reloading, false);
+    weapons.update(1, input('KeyR'), camera);
+    weapons.update(weapons.equipped.reloadDuration, input(), camera);
+    assert.equal(weapons.equipped.ammo, 12);
+    weapons.update(0, input('MouseLeft'), camera);
+    weapons.update(0, input('KeyR'), camera);
+    weapons.update(0, input('KeyQ'), camera);
+    assert.equal(weapons.reloading, false);
+    weapons.update(5, input('KeyR'), camera);
+    assert.equal(weapons.equipped.ammo, 11);
+});
+
+test('escopeta espalha oito projéteis em cone ao redor da mira e gasta um cartucho', () => {
+    for (const [yaw, pitch] of [[0, 0], [-1.2, 0.8], [2.5, -1.55], [1, 1.55]]) {
+        const weapons = system(), camera = new FPSCamera();
+        camera.yaw = yaw; camera.pitch = pitch;
+        weapons.select(2);
+        let sounds = 0;
+        weapons.onShoot = () => sounds++;
+        weapons.update(0, input('MouseLeft'), camera);
+        assert.equal(weapons.projectiles.length, 8);
+        assert.equal(weapons.equipped.ammo, 7);
+        assert.equal(sounds, 1);
+        const center = weapons.projectiles[0];
+        assert.equal(new Set(weapons.projectiles.map(p => p.direction.join(','))).size, 8);
+        for (const pellet of weapons.projectiles) {
+            assert.deepEqual(pellet.position, center.position);
+            near(Math.hypot(...pellet.direction), 1);
+            const dot = pellet.direction.reduce((sum, value, i) => sum + value * center.direction[i], 0);
+            assert.ok(dot >= Math.cos(weapons.equipped.spread) - 1e-9);
+        }
+        weapons.update(0.1, input(), camera);
+        assert.ok(weapons.projectiles.slice(1).every(p => Math.hypot(...p.position.map((v, i) => v - center.position[i])) > 0));
+    }
+});
+
+test('cadência bloqueia cliques rápidos e trocar de arma não reinicia o intervalo', () => {
+    const weapons = system(), camera = new FPSCamera();
+    for (let index = 0; index < 4; index++) {
+        weapons.select(index);
+        const weapon = weapons.equipped;
+        weapons.update(0, input('MouseLeft'), camera);
+        weapons.update(0, input('MouseLeft'), camera);
+        weapons.select((index + 1) % 4);
+        weapons.select(index);
+        assert.equal(weapons.shoot(camera), false);
+        assert.equal(weapon.ammo, weapon.magazineSize - 1);
+        weapons.update(weapon.shotInterval, input('MouseLeft'), camera);
+        assert.equal(weapon.ammo, weapon.magazineSize - 2);
+    }
+});
+
+test('HUD acompanha a arma, munição e recarga; pausa e melee ocultam o contador', () => {
+    const ui = Object.fromEntries(['ammo', 'ammoWeapon', 'ammoCount', 'ammoCapacity', 'ammoProgress', 'ammoHint', 'overlay', 'crosshair', 'status', 'title', 'description', 'button'].map(key => [key, { dataset: {}, style: {}, setAttribute() {} }]));
+    const game = new Game({}, ui);
+    game.weapons = system();
+    game.state = 'paused';
+    game.setPlaying(true);
+    assert.equal(ui.ammo.hidden, false);
+    assert.equal(ui.ammoCount.textContent, '12');
+    assert.equal(ui.ammoCapacity.textContent, '12');
+    assert.equal(ui.ammoHint.textContent, '');
+    game.weapons.shoot(new FPSCamera());
+    game.updateAmmoHUD();
+    assert.equal(ui.ammoCount.textContent, '11');
+    game.weapons.reload();
+    game.updateAmmoHUD();
+    assert.match(ui.ammoHint.textContent, /Recarregando/);
+    assert.equal(ui.ammo.dataset.reloading, 'true');
+    const remaining = game.weapons.reloadRemaining;
+    game.setPlaying(false);
+    assert.equal(ui.ammo.hidden, true);
+    game.setPlaying(true);
+    assert.equal(game.weapons.reloadRemaining, remaining);
+    game.weapons.select(1);
+    game.updateAmmoHUD();
+    assert.equal(ui.ammoWeapon.textContent, 'AKM');
+    assert.equal(ui.ammoCount.textContent, '30');
+    assert.equal(ui.ammoCapacity.textContent, '30');
+    assert.equal(ui.ammo.dataset.reloading, 'false');
+    game.weapons.equipped.ammo = 3;
+    game.updateAmmoHUD();
+    assert.equal(ui.ammo.dataset.low, 'true');
+    assert.equal(ui.ammoHint.textContent, 'R · Recarregar');
+    game.weapons.update(0, input('KeyQ'), new FPSCamera());
+    game.updateAmmoHUD();
+    assert.equal(ui.ammo.hidden, true);
+});
+
+test('recarga inclina a arma para baixo e retorna à pose original em diferentes FPS', () => {
+    for (const fps of [30, 60, 144]) for (let index = 0; index < 4; index++) {
+        const weapons = system(), camera = new FPSCamera();
+        weapons.select(index);
+        const weapon = weapons.equipped, original = [...weapon.localMatrix];
+        const muzzle = transformPoint(original, weapon.muzzle);
+        let armsPose;
+        weapons.arms = { drawFirearm: (_info, _weapon, pose) => { armsPose = pose; } };
+        const draw = () => weapons.drawWeapon({ clear() {}, uniformMatrix4fv() {} }, { uniforms: {} });
+        weapons.shoot(camera);
+        weapons.reload();
+        assert.deepEqual(weapons.reloadPose, Matrix4.identity());
+        for (let frame = 0; frame < Math.ceil(fps * 0.3); frame++) weapons.update(1 / fps, input(), camera);
+        draw();
+        const loweredMuzzle = transformPoint(weapon.mesh.modelMatrix, weapon.muzzle);
+        assert.ok(loweredMuzzle[1] < muzzle[1] - 0.1);
+        assert.deepEqual(weapon.mesh.modelMatrix, Matrix4.multiply(armsPose, original));
+        assert.deepEqual(weapon.localMatrix, original);
+        assert.equal(weapons.shoot(camera), false);
+        const pausedPose = weapons.reloadPose;
+        draw(); draw();
+        assert.deepEqual(weapons.reloadPose, pausedPose, 'desenhar não avança a recarga');
+        weapons.update(weapons.reloadRemaining - 0.14, input(), camera);
+        draw();
+        const risingMuzzle = transformPoint(weapon.mesh.modelMatrix, weapon.muzzle);
+        assert.ok(risingMuzzle[1] > loweredMuzzle[1] && risingMuzzle[1] < muzzle[1]);
+        weapons.update(0.14, input(), camera);
+        draw();
+        assert.equal(weapons.reloading, false);
+        assert.deepEqual(weapon.mesh.modelMatrix, original);
+        assert.deepEqual(armsPose, Matrix4.identity());
+    }
+});
+
+test('cancelar a recarga remove a inclinação sem alterar a arma base', () => {
+    const weapons = system(), camera = new FPSCamera();
+    weapons.shoot(camera);
+    weapons.reload();
+    weapons.update(0.3, input(), camera);
+    assert.notDeepEqual(weapons.reloadPose, Matrix4.identity());
+    weapons.select(1);
+    assert.deepEqual(weapons.reloadPose, Matrix4.identity());
+    weapons.select(0);
+    assert.equal(weapons.equipped.ammo, 11);
+    assert.deepEqual(weapons.reloadPose, Matrix4.identity());
+    weapons.reload();
+    weapons.update(0.3, input('KeyF'), camera);
+    assert.deepEqual(weapons.reloadPose, Matrix4.identity());
 });
 
 test('teclas selecionam apenas uma arma; seleção inválida mantém equipamento', () => {

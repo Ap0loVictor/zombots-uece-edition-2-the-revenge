@@ -97,3 +97,31 @@ test('corpo repousa no chão, não envolve os olhos e solta todos os buffers', (
     body.dispose();
     assert.equal(gl.deleted.length, 2);
 });
+
+test('mãos acompanham a pose de recarga das armas e braços continuam com geometria válida', () => {
+    const arms = new FirstPersonArms(graphics());
+    const weapons = new WeaponSystem(WEAPON_DEFINITIONS.map(() => ({})), {});
+    arms.mesh.draw = () => assert.ok(Matrix4.normalMatrix(arms.mesh.modelMatrix).every(Number.isFinite));
+    for (let index = 0; index < 4; index++) {
+        weapons.select(index);
+        const weapon = weapons.equipped;
+        weapon.ammo--;
+        weapons.reload();
+        for (const elapsed of [0, 0.11, 0.3, weapon.reloadDuration - 0.14]) {
+            weapons.reloadRemaining = weapon.reloadDuration - elapsed;
+            const pose = weapons.reloadPose;
+            const hands = [];
+            const hold = arms.hold;
+            arms.hold = function (info, hand, side) {
+                hands.push(hand);
+                hold.call(this, info, hand, side);
+            };
+            arms.drawFirearm({}, weapon, pose);
+            arms.hold = hold;
+            weapon.grips.forEach((grip, i) => {
+                const gripPosition = posePoint(Matrix4.multiply(pose, weapon.localMatrix), grip.point);
+                posePoint(hands[i], [0, 0, 0]).forEach((value, axis) => assert.ok(Math.abs(value - gripPosition[axis]) < 1e-8));
+            });
+        }
+    }
+});

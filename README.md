@@ -35,9 +35,11 @@ Não há dependências externas, CDN, instalação de pacotes ou etapa de build.
 | Pular | `Espaço` |
 | Selecionar pistola / AKM / escopeta / sniper | `1` / `2` / `3` / `4` |
 | Alternar e equipar soco / katana | `Q` |
-| Executar golpe com o melee selecionado | `F` |
+| Executar golpe com o melee equipado | Botão esquerdo do mouse ou `F` |
+| Golpe melee rápido com arma de fogo equipada | `F` |
 | Ativar / silenciar áudio | `M` |
 | Disparar (segure para rajada com AKM) | Botão esquerdo do mouse |
+| Recarregar (reserva infinita) | `R` ou automaticamente ao esvaziar |
 | Pausar / retomar | `P` |
 | Liberar o cursor e pausar | `Esc` |
 | Entrar / retomar capturando o mouse | Botão na tela |
@@ -152,7 +154,18 @@ A referência atualizada `cg-project3d-uece/assets/` fornece quatro modelos, cop
 
 `src/game/weapons.js` concentra o inventário e as transformações individuais de escala, posição e rotação. Todos apontam originalmente para +X e são girados para −Z. A boca de cada cano tem uma coordenada local própria, transformada para o mundo com a mesma matriz usada no desenho da arma e a orientação da câmera. Somente o slot selecionado é desenhado, em uma passagem FPS após o cenário; os projéteis respeitam a profundidade do mundo.
 
-As teclas 1–4 selecionam pistola, AKM, escopeta e sniper. Cada clique esquerdo cria um projétil que converge para a mira a 40 unidades, viajando a 24 unidades/s. A limpeza ocorre após 3 segundos ou 60 unidades, com limite de 64 projéteis simultâneos e buffers compartilhados. A AKM dispara continuamente enquanto o botão esquerdo estiver pressionado, com intervalo de 8/60 s entre tiros; as outras armas disparam uma esfera por clique; não há dano, colisões de projéteis ou lógica de combate.
+As teclas 1–4 selecionam pistola, AKM, escopeta e sniper. Os projéteis saem do cano em direção à mira a 40 unidades, viajando a 24 unidades/s. A escopeta lança **oito projéteis por cartucho**, espalhados em um cone de 6° em torno dessa direção; as demais armas lançam um projétil por tiro. A limpeza ocorre após 3 segundos ou 60 unidades, com limite de 64 projéteis simultâneos e buffers compartilhados. A AKM dispara continuamente enquanto o botão esquerdo estiver pressionado; as outras armas exigem um clique por tiro. Não há dano ou colisões de projéteis.
+
+| Arma | Munição por pente | Tempo de recarga | Intervalo entre tiros |
+| --- | --- | --- | --- |
+| Pistola | 12 | 1,4 s | 0,22 s |
+| AKM | 30 | 2,2 s | 8/60 s |
+| Escopeta | 8 | 2,6 s | 0,85 s |
+| Sniper | 5 | 2,8 s | 1,2 s |
+
+O contador minimalista no canto inferior direito mostra a munição atual em destaque, a capacidade do pente menor ao lado (por exemplo, `12 / 30` na AKM) e o nome da arma, sem caixa de fundo ou texto de reserva. Com pouca munição, os números ficam amarelos e aparece a dica `R · Recarregar`. Durante a recarga, uma barra fina acompanha o progresso, sem contagem de segundos. `R` recarrega um pente parcial; esvaziar o pente inicia a recarga automaticamente. A reserva continua infinita, sem coleta de munição. Durante a recarga não há tiros. Trocar de arma ou executar um golpe melee cancela a recarga, preservando a munição de cada arma; pausar congela o tempo restante. O contador fica oculto durante o melee e no menu.
+
+A recarga reutiliza os modelos atuais: a arma inclina suavemente para baixo em 0,22 s, permanece abaixada e retorna nos últimos 0,28 s. As mãos acompanham a arma e os braços ajustam os cotovelos mantendo os ombros ligados ao corpo. A pose usa o mesmo relógio da recarga, congela na pausa e volta à posição padrão antes de liberar o disparo.
 
 ### Áudio
 
@@ -168,10 +181,10 @@ Verificação manual: entre, alterne 1–4, dispare olhando em diferentes direç
 
 O slot melee começa no **soco**. `Q` alterna entre soco e katana e coloca a opção selecionada nas mãos; `1–4` voltam às armas de fogo, preservando a seleção melee. O HUD mostra qual golpe está selecionado.
 
-`F` executa um golpe por pressionamento: avanço do punho no soco (0,38 s) ou preparação e corte diagonal na katana (0,62 s). Também funciona como golpe rápido enquanto uma arma de fogo está equipada: ela fica oculta durante a animação e retorna ao terminar. Durante o melee não há disparos; segurar `F` não repete golpes. Trocar com `Q` durante uma animação seleciona o próximo golpe sem modificar o que já começou. Pausar cancela a animação e interrompe seu som.
+O **botão esquerdo do mouse** executa um golpe quando soco ou katana estão equipados. `F` também executa um golpe por pressionamento: avanço do punho no soco (0,38 s) ou preparação e corte diagonal na katana (0,62 s). Também funciona como golpe rápido enquanto uma arma de fogo está equipada: ela fica oculta durante a animação e retorna ao terminar. Durante o melee não há disparos; segurar o mouse ou `F` não repete golpes. Trocar com `Q` durante uma animação seleciona o próximo golpe sem modificar o que já começou. Pausar cancela a animação e interrompe seu som.
 
 `src/game/melee.js` controla seleção e tempo dos golpes; `src/game/melee_view.js` utiliza os braços e mãos de `character_model.js` e constrói a katana com guarda, cabo e lâmina curva facetada. As malhas usam cores sólidas, iluminação e a mesma passagem FPS das armas de fogo. Os buffers são compartilhados entre quadros e liberados com o restante das armas.
 
 Esta etapa é somente visual e sonora: **não implementa hitboxes, detecção de acerto ou dano**. Os inimigos mantêm o comportamento existente, mesmo ao receber golpes visualmente.
 
-Verificação manual: pressione `F` com a pistola, depois `Q` e `F` para a katana, e `Q` e `F` para o soco. Confira os modelos em repouso, os dois movimentos e sons; volte para 1–4 e teste o golpe rápido. Experimente `M`, pausa/perda de foco durante o golpe e retomada. Confira que manter `F` pressionado não repete golpes e que clicar durante o melee não cria projéteis.
+Verificação manual: pressione `F` com a pistola, depois `Q` e clique esquerdo para a katana, e `Q` e clique esquerdo para o soco. Confira os modelos em repouso, os dois movimentos e sons; volte para 1–4 e teste o golpe rápido. Experimente `M`, pausa/perda de foco durante o golpe e retomada. Confira que manter o mouse ou `F` pressionado não repete golpes e que clicar durante o melee não cria projéteis. Dispare com cada arma até esvaziar o pente, confira a recarga automática e teste `R` com um pente parcial; troque de arma durante a recarga e verifique a preservação da munição. Na escopeta, observe o espalhamento ao disparar em diferentes direções.
