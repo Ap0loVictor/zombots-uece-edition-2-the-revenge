@@ -1,5 +1,5 @@
 const MOVEMENT_CODES = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD',
-    'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space', 'KeyM', 'KeyQ', 'KeyF']);
+    'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space', 'KeyM', 'KeyQ', 'KeyF', 'KeyR']);
 
 export class InputHandler {
     constructor(canvas, { onLockChange, onPause, onError }) {

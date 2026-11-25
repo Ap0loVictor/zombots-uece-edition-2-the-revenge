@@ -106,12 +106,14 @@ export class FirstPersonArms extends CharacterParts {
         this.hand(info, pose, side, fist);
     }
 
-    drawFirearm(info, weapon) {
+    drawFirearm(info, weapon, weaponPose = Matrix4.identity()) {
         for (const grip of weapon.grips) {
             const position = posePoint(weapon.localMatrix, grip.point);
             const pose = Matrix4.multiply(Matrix4.translation(...position),
                 Matrix4.multiply(Matrix4.rotationZ(grip.roll ?? 0), Matrix4.rotationX(grip.pitch ?? 0)));
-            this.hold(info, pose, grip.side);
+            // Mãos acompanham a inclinação da arma; os braços se ajustam mantendo
+            // os ombros presos ao corpo com a articulação já existente.
+            this.hold(info, Matrix4.multiply(weaponPose, pose), grip.side);
         }
     }
 }

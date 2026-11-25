@@ -105,9 +105,11 @@ export class Game {
             this.menu?.close();
             this.ui.hud.hidden = false;
             this.ui.crosshair.hidden = false;
+            this.updateAmmoHUD();
             this.ui.status.textContent = 'EM JOGO';
         } else if (this.state === 'playing') {
             this.state = 'paused';
+            if (this.ui.ammo) this.ui.ammo.hidden = true;
             this.ui.crosshair.hidden = true;
             this.ui.status.textContent = 'PAUSADO';
             this.menu?.open({ paused: true });
@@ -127,6 +129,7 @@ export class Game {
         this.ui.menu.hidden = true;
         this.ui.overlay.hidden = false;
         this.ui.crosshair.hidden = true;
+        if (this.ui.ammo) this.ui.ammo.hidden = true;
     }
 
     updateSettings(settings) {
@@ -166,6 +169,7 @@ export class Game {
         this.player.update(this.input, dt, [...this.level.colliders, ...this.enemies.map(enemy => enemy.collider)], this.groundHeightAt);
         if (this.input.consumePress('KeyM')) this.audio.toggleMute();
         this.weapons.update(dt, this.input, this.player.camera);
+        this.updateAmmoHUD();
         const held = this.weapons.showingMelee ? 'MELEE' : `${this.weapons.selected + 1} · ${this.weapons.equipped.name}`;
         this.ui.status.textContent = `${held} · Q / F: ${this.weapons.melee.equipped.name} · SOM ${this.audio.muted ? 'DESLIGADO' : 'LIGADO'}`;
         for (const enemy of this.enemies) {
@@ -176,6 +180,23 @@ export class Game {
             ];
             enemy.update(dt, this.player.position, obstacles);
         }
+    }
+
+    updateAmmoHUD() {
+        if (!this.ui.ammo) return;
+        this.ui.ammo.hidden = this.state !== 'playing' || this.weapons.showingMelee;
+        const weapon = this.weapons.equipped;
+        this.ui.ammoWeapon.textContent = weapon.name;
+        const low = weapon.ammo <= Math.ceil(weapon.magazineSize * 0.25);
+        this.ui.ammoCount.textContent = String(weapon.ammo);
+        this.ui.ammoCapacity.textContent = String(weapon.magazineSize);
+        this.ui.ammo.dataset.low = String(low);
+        this.ui.ammo.dataset.reloading = String(this.weapons.reloading);
+        this.ui.ammoProgress.style.transform = `scaleX(${this.weapons.reloadProgress})`;
+        this.ui.ammo.setAttribute('aria-label', `${weapon.name}: ${weapon.ammo} de ${weapon.magazineSize} munições`);
+        this.ui.ammoHint.textContent = this.weapons.reloading
+            ? 'Recarregando'
+            : low ? 'R · Recarregar' : '';
     }
 
     render(elapsed) {

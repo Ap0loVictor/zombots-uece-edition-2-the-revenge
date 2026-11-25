@@ -21,6 +21,17 @@
         .subtitle { margin-top: 5px; color: #becbd1; font-size: 12px; }
         #status { font: 11px ui-monospace, monospace; letter-spacing: .12em; border: 1px solid #ffffff30; padding: 8px 12px; border-radius: 4px; background: #131c26b3; }
         .controls { position: absolute; bottom: 22px; left: 28px; right: 28px; margin: 0; color: #e1e9ed; font-size: 12px; text-shadow: 0 1px 4px #000; }
+        #ammo { position: absolute; right: 32px; bottom: 100px; min-width: 128px; text-align: right; color: #fff; text-shadow: 0 2px 5px #000b; }
+        #ammo-weapon { color: #e0e4e6; font-size: 10px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; }
+        .ammo-numbers { display: flex; justify-content: flex-end; align-items: baseline; gap: 7px; margin-top: 2px; font-family: 'Arial Narrow', 'Liberation Sans Narrow', sans-serif; font-variant-numeric: tabular-nums; font-style: italic; }
+        #ammo-count { font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -.04em; }
+        .ammo-divider { color: #b9bfc2; font-size: 21px; font-weight: 300; }
+        #ammo-capacity { color: #cbd0d3; font-size: 23px; font-weight: 500; }
+        .ammo-reload-track { height: 2px; margin-top: 8px; background: #ffffff30; opacity: 0; }
+        #ammo[data-reloading="true"] .ammo-reload-track { opacity: 1; }
+        #ammo-progress { height: 100%; background: #f4d35e; transform: scaleX(0); transform-origin: left; }
+        #ammo-hint { min-height: 12px; margin-top: 6px; color: #f4d35e; font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+        #ammo[data-low="true"] #ammo-count { color: #f4d35e; }
         #crosshair { position: fixed; left: 50%; top: 50%; width: 5px; height: 5px; transform: translate(-50%, -50%); background: #fff; border-radius: 50%; box-shadow: 0 0 2px 1px #0008; pointer-events: none; }
 
         /* Botões e elementos comuns */
@@ -97,7 +108,13 @@
             <div><div class="brand">ZOM<span>BOTS</span></div><div class="subtitle">UECE Edition 2 · The Revenge</div></div>
             <span id="status" role="status">CARREGANDO</span>
         </header>
-        <p class="controls" id="hud-hints">WASD / setas · mover &nbsp; Mouse · olhar &nbsp; Shift · correr &nbsp; Espaço · pular &nbsp; 1–4 · armas de fogo &nbsp; Q · soco / katana &nbsp; F · golpe melee &nbsp; M · som &nbsp; Botão esquerdo · disparar &nbsp; P / Esc · pausar</p>
+        <div id="ammo" hidden aria-label="Munição da arma equipada">
+            <div id="ammo-weapon"></div>
+            <div class="ammo-numbers"><span id="ammo-count"></span><span class="ammo-divider" aria-hidden="true">/</span><span id="ammo-capacity"></span></div>
+            <div class="ammo-reload-track" aria-hidden="true"><div id="ammo-progress"></div></div>
+            <div id="ammo-hint"></div>
+        </div>
+        <p class="controls" id="hud-hints">WASD / setas · mover &nbsp; Mouse · olhar &nbsp; Shift · correr &nbsp; Espaço · pular &nbsp; 1–4 · armas de fogo &nbsp; Q · soco / katana &nbsp; F · golpe rápido &nbsp; M · som &nbsp; Botão esquerdo · disparar / golpear &nbsp; R · recarregar &nbsp; P / Esc · pausar</p>
     </div>
     <div id="crosshair" hidden aria-hidden="true"></div>
 

@@ -12,6 +12,24 @@ const input = (...keys) => { const pressed = new Set(keys); return { consumePres
 const system = () => new WeaponSystem(WEAPON_DEFINITIONS.map(mesh), mesh());
 const camera = new FPSCamera();
 
+test('clique esquerdo golpeia com soco/katana equipados sem disparar nem repetir ao segurar', () => {
+    const weapons = system(), sounds = [];
+    weapons.melee.onSwing = weapon => sounds.push(weapon.sound);
+    for (const expected of ['katana', 'soco']) {
+        weapons.update(0, input('KeyQ', 'MouseLeft'), camera);
+        assert.equal(weapons.melee.attacking, true);
+        assert.equal(sounds.at(-1), expected);
+        const count = sounds.length;
+        weapons.update(0.1, input('MouseLeft'), camera);
+        assert.equal(sounds.length, count);
+        weapons.update(1, { consumePress: () => false, isPressed: () => true }, camera);
+        assert.equal(weapons.melee.attacking, false);
+        assert.equal(sounds.length, count);
+        assert.equal(weapons.projectiles.length, 0);
+        assert.equal(weapons.equipped.ammo, 12);
+    }
+});
+
 test('Q alterna exatamente soco/katana; 1–4 preservam a seleção melee', () => {
     const weapons = system();
     assert.equal(weapons.melee.equipped.name, 'Soco');

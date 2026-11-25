@@ -18,7 +18,7 @@ test('lore tem texto', () => {
 test('tela de controles lista todas as ações do jogador', () => {
     const labels = CONTROL_GROUPS.flatMap(group => group.controls.flatMap(c => c.keys.flat()));
     for (const key of ['W', 'A', 'S', 'D', '↑', '←', '↓', '→', 'Mouse', 'Shift', 'Espaço', 'Botão esquerdo',
-        '1', '2', '3', '4', 'Q', 'F', 'M', 'P', 'Esc']) {
+        '1', '2', '3', '4', 'Q', 'F', 'R', 'M', 'P', 'Esc']) {
         assert.ok(labels.includes(key), `falta a tecla ${key}`);
     }
     assert.ok(CONTROL_GROUPS.every(group => group.title && group.controls.length));

@@ -15,7 +15,8 @@ export const CONTROL_GROUPS = [
     {
         title: 'Combate',
         controls: [
-            { keys: [['Botão esquerdo']], action: 'Atirar (com a AKM, segure para disparar em rajada)' },
+            { keys: [['Botão esquerdo']], action: 'Atirar ou golpear com o melee equipado (com a AKM, segure para disparar em rajada)' },
+            { keys: [['R']], action: 'Recarregar a arma (automático ao esvaziar o pente)' },
             { keys: [['1']], action: 'Equipar a pistola' },
             { keys: [['2']], action: 'Equipar a AKM' },
             { keys: [['3']], action: 'Equipar a escopeta' },
