@@ -36,7 +36,7 @@ zombots-uece-edition-2-the-revenge/
 | -------------------------- | --------------- |
 | Mover                      | `←` `↑` `→` `↓` |
 | Ataque / Atirar            | `X`             |
-| Correr                     | `SPACEBAR`      |
+| Correr                     | `Shift`      |
 | Pausar / despausar         | `P`             |
 | Voltar ao menu             | `ESC`           |
 
