@@ -1,12 +1,14 @@
 import { Matrix4 } from './matrix.js';
 
 export class Mesh {
-    constructor(gl, vertexData, normalData, colorData = null) {
+    constructor(gl, vertexData, normalData, colorData = null, uvData = null) {
         this.gl = gl;
         this.vertexCount = vertexData.length / 3;
         this.positionBuffer = this.createBuffer(vertexData);
         this.normalBuffer = this.createBuffer(normalData);
         this.colorBuffer = colorData ? this.createBuffer(colorData) : null;
+        this.uvBuffer = uvData ? this.createBuffer(uvData) : null;
+        this.texture = null;
         this.modelMatrix = Matrix4.identity();
         this.color = [1, 1, 1, 1];
     }
@@ -25,12 +27,19 @@ export class Mesh {
         gl.uniformMatrix3fv(uniforms.u_normalMatrix, false, Matrix4.normalMatrix(this.modelMatrix));
         gl.uniform4fv(uniforms.u_color, this.color);
         gl.uniform1i(uniforms.u_useVertexColors, this.colorBuffer ? 1 : 0);
+        if (uniforms.u_useTexture) gl.uniform1i(uniforms.u_useTexture, this.texture ? 1 : 0);
+        if (this.texture) {
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+            gl.uniform1i(uniforms.u_texture, 0);
+        }
         for (const [buffer, location, size] of [
             [this.positionBuffer, attribs.a_position, 3],
             [this.normalBuffer, attribs.a_normal, 3],
             [this.colorBuffer, attribs.a_color, 4],
+            [this.uvBuffer, attribs.a_uv, 2],
         ]) {
-            if (location < 0) continue;
+            if (location === undefined || location < 0) continue;
             if (buffer) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
                 gl.enableVertexAttribArray(location);
@@ -44,9 +53,10 @@ export class Mesh {
     }
 
     dispose() {
-        for (const buffer of [this.positionBuffer, this.normalBuffer, this.colorBuffer]) {
+        for (const buffer of [this.positionBuffer, this.normalBuffer, this.colorBuffer, this.uvBuffer]) {
             if (buffer) this.gl.deleteBuffer(buffer);
         }
+        if (this.texture) this.gl.deleteTexture(this.texture);
     }
 
     static plane(gl) {
