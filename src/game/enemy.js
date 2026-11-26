@@ -16,7 +16,8 @@ export class Enemy {
         return createAABB({ x: this.position.x, y: this.position.y + this.halfSize.y, z: this.position.z }, this.halfSize);
     }
 
-    update(dt, target, obstacles) {
+    update(dt, target, obstacles, groundHeightAt = () => 0) {
+        this.position.y = groundHeightAt(this.position.x, this.position.z, this.position.y);
         const dx = target.x - this.position.x;
         const dz = target.z - this.position.z;
         const distance = Math.hypot(dx, dz);
@@ -33,9 +34,22 @@ export class Enemy {
         );
         this.position.x = center.x;
         this.position.z = center.z;
+        this.position.y = groundHeightAt(this.position.x, this.position.z, this.position.y);
     }
 
     draw(mesh, programInfo, elapsed) {
+        if (mesh.maxY !== undefined) {
+            const scale = 1.8 / Math.max(mesh.maxY - mesh.minY, 1e-6);
+            mesh.color = [1, 1, 1, 1];
+            mesh.modelMatrix = Matrix4.multiply(
+                Matrix4.translation(this.position.x, this.position.y, this.position.z),
+                Matrix4.multiply(Matrix4.rotationY(this.yaw),
+                    Matrix4.multiply(Matrix4.scaling(scale, scale, scale),
+                        Matrix4.translation(-mesh.centerX, -mesh.minY, -mesh.centerZ))),
+            );
+            mesh.draw(programInfo);
+            return;
+        }
         // Animação ociosa: mantém a cena viva sem criar lógica de combate.
         const bob = Math.sin(elapsed * 2 + this.position.x) * 0.035;
         mesh.color = this.color;

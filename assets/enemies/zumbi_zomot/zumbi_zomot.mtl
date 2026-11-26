@@ -1,0 +1,3 @@
+newmtl material8.001
+Kd 1.0 1.0 1.0
+map_Kd material8.png

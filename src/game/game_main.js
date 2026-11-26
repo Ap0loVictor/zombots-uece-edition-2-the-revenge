@@ -1,7 +1,6 @@
 import { initGL, resizeCanvas } from '../engine/gl.js';
 import { Shaders } from '../engine/shaders.js';
 import { PlayerBody } from './character_model.js';
-import { Mesh } from '../engine/mesh.js';
 import { InputHandler } from '../engine/input.js';
 import { intersectsAABB } from '../engine/collision.js';
 import { Level } from './level.js';
@@ -9,6 +8,7 @@ import { Player } from './player.js';
 import { WeaponSystem } from './weapons.js';
 import { GameAudio } from '../engine/audio.js';
 import { Enemy } from './enemy.js';
+import { OBJLoader } from '../engine/obj_loader.js';
 import { MenuCamera } from './menu_camera.js';
 import { MenuController } from './menu.js';
 import { DEFAULT_SETTINGS, fovRadians, loadSettings, lookSpeedFor, saveSettings } from './settings.js';
@@ -47,17 +47,26 @@ export class Game {
         this.player.position.y = this.groundHeightAt(this.player.position.x, this.player.position.z);
         this.player.syncCamera();
         this.applySettings();
-        this.weapons = await WeaponSystem.load(this.gl);
+        const [weapons, zombieMesh, robotMesh, zombotMesh] = await Promise.all([
+            WeaponSystem.load(this.gl),
+            OBJLoader.load(this.gl, new URL('../../assets/enemies/zumbi_zomot/zumbi_zomot.obj', import.meta.url)),
+            OBJLoader.load(this.gl, new URL('../../assets/enemies/robo/robo.obj', import.meta.url)),
+            OBJLoader.load(this.gl, new URL('../../assets/enemies/zombot/zombot.obj', import.meta.url)),
+        ]);
+        this.weapons = weapons;
+        this.enemyMeshes = { Zumbi: zombieMesh, 'Robô': robotMesh, Zombot: zombotMesh };
         this.audio = new GameAudio();
         this.applySettings();
         this.weapons.onShoot = weapon => this.audio.play(weapon.sound);
         this.weapons.melee.onSwing = weapon => this.audio.play(weapon.sound);
-        this.enemyMesh = Mesh.box(this.gl);
         this.enemies = [
             new Enemy('Zumbi', { x: -6, y: 0, z: -5 }, [0.12, 0.68, 0.22, 1]),
             new Enemy('Robô', { x: 6, y: 0, z: -5 }, [0.12, 0.38, 0.9, 1]),
             new Enemy('Zombot', { x: 0, y: 0, z: -7 }, [0.04, 0.04, 0.05, 1]),
         ];
+        for (const enemy of this.enemies) {
+            enemy.position.y = this.groundHeightAt(enemy.position.x, enemy.position.z, enemy.position.y);
+        }
         if (level.colliders.some(box => intersectsAABB(this.player.collider, box))) {
             throw new Error('A posição inicial do jogador está dentro de um obstáculo.');
         }
@@ -178,7 +187,7 @@ export class Game {
                 this.player.collider,
                 ...this.enemies.filter(other => other !== enemy).map(other => other.collider),
             ];
-            enemy.update(dt, this.player.position, obstacles);
+            enemy.update(dt, this.player.position, obstacles, this.groundHeightAt);
         }
     }
 
@@ -210,7 +219,7 @@ export class Game {
         gl.uniformMatrix4fv(this.programInfo.uniforms.u_projection, false,
             camera.getProjectionMatrix(gl.canvas.width / gl.canvas.height));
         this.level.draw(this.programInfo);
-        for (const enemy of this.enemies) enemy.draw(this.enemyMesh, this.programInfo, elapsed);
+        for (const enemy of this.enemies) enemy.draw(this.enemyMeshes[enemy.name], this.programInfo, elapsed);
         if (inMenu) return; // sem corpo, armas ou projéteis de primeira pessoa no menu
         this.player.draw(this.programInfo);
         this.weapons.drawProjectiles(this.programInfo);
@@ -234,7 +243,7 @@ export class Game {
         this.menu?.dispose();
         this.level?.dispose();
         this.player?.mesh.dispose();
-        this.enemyMesh?.dispose();
+        Object.values(this.enemyMeshes ?? {}).forEach(mesh => mesh.dispose());
         this.weapons?.dispose();
         this.audio?.dispose();
         if (this.programInfo) this.gl.deleteProgram(this.programInfo.program);
