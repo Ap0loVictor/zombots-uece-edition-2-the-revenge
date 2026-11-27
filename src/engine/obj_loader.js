@@ -1,5 +1,8 @@
 import { Mesh } from './mesh.js';
 
+const DEFAULT_SPECULAR = 0.2;
+const DEFAULT_SHININESS = 32;
+
 async function readText(url) {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Falha ao carregar ${url}: HTTP ${response.status}.`);
@@ -46,6 +49,8 @@ export class OBJLoader {
         mesh.maxY = data.maxY;
         mesh.centerX = (data.minX + data.maxX) / 2;
         mesh.centerZ = (data.minZ + data.maxZ) / 2;
+        mesh.specular = data.specular;
+        mesh.shininess = data.shininess;
         if (data.material && textures.has(data.material)) mesh.texture = await this.loadTexture(gl, textures.get(data.material));
         return mesh;
     }
@@ -62,6 +67,12 @@ export class OBJLoader {
                 materials.set(name, color);
             } else if (keyword === 'Kd' && name !== null) {
                 materials.get(name).splice(0, 4, ...vector(parts, 3), 1);
+            } else if (keyword === 'Ks' && name !== null) {
+                const [r, g, b] = vector(parts, 3);
+                materials.get(name).specular = (r + g + b) / 3;
+            } else if (keyword === 'Ns' && name !== null) {
+                // Ns do Blender vai até 1000; limitamos para o brilho continuar visível.
+                materials.get(name).shininess = Math.min(128, Math.max(1, Number(parts[0]) || 1));
             } else if (keyword === 'map_Kd' && name !== null) {
                 materials.get(name).texture = parts.at(-1);
             }
@@ -70,13 +81,15 @@ export class OBJLoader {
     }
 
     // OBJ com faces convexas, normais opcionais e material difuso Kd.
-    // UVs são aceitos nos índices, mas texturas não fazem parte deste protótipo.
+    // Kd/Ks/Ns do MTL viram cor, brilho especular e expoente de Phong (médias por triângulo);
+    // map_Kd vira textura (uma por modelo).
     static parse(text, materials = new Map(), { excludeObjects = [] } = {}) {
         const vertices = [], sourceNormals = [], sourceUVs = [];
         const positions = [], normals = [], colors = [], uvs = [];
         let color = [1, 1, 1, 1];
         let excluded = false;
         let material = null;
+        let specularSum = 0, shininessSum = 0, triangleCount = 0;
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
         for (const line of lines(text)) {
             const [keyword, ...parts] = line.split(/\s+/);
@@ -106,6 +119,9 @@ export class OBJLoader {
                     const length = Math.hypot(...normal);
                     // Exportações reais podem conter faces sem área; elas não contribuem para a imagem.
                     if (length < 1e-10) continue;
+                    specularSum += color.specular ?? DEFAULT_SPECULAR;
+                    shininessSum += color.shininess ?? DEFAULT_SHININESS;
+                    triangleCount++;
                     for (let corner = 0; corner < 3; corner++) {
                         positions.push(...triangle[corner]);
                         normals.push(...(face[corner][2] ? indexed(sourceNormals, face[corner][2]) : normal.map(value => value / length)));
@@ -116,7 +132,9 @@ export class OBJLoader {
             }
         }
         if (!positions.length) throw new Error('O modelo OBJ não contém faces.');
-        return { positions, normals, colors, uvs, material, minX, maxX, minY, maxY, minZ, maxZ };
+        const specular = triangleCount ? specularSum / triangleCount : DEFAULT_SPECULAR;
+        const shininess = triangleCount ? shininessSum / triangleCount : DEFAULT_SHININESS;
+        return { positions, normals, colors, uvs, material, specular, shininess, minX, maxX, minY, maxY, minZ, maxZ };
     }
 
     static async loadTexture(gl, url) {

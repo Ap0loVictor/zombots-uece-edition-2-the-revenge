@@ -23,7 +23,7 @@ python3 -m http.server 8000 --bind 127.0.0.1
 
 Abra **http://127.0.0.1:8000** em um navegador desktop com WebGL, teclado e mouse. O jogo abre no **menu principal**, com o nome do jogo e o botão **Jogar** sobre o campus girando ao fundo. Clique em **Jogar** (ou pressione `Enter`) para capturar o cursor e começar. Não abra `index.html` diretamente por `file://`: os módulos JavaScript e o carregamento de OBJ/MTL/JSON precisam do servidor HTTP.
 
-Não há dependências externas, CDN, instalação de pacotes ou etapa de build. Node.js é necessário apenas para executar os testes.
+O campus é desenhado no menu com luz de "sol" fraca; ao jogar, a cena escurece e só a luz do capacete a ilumina. Não há dependências externas, CDN, instalação de pacotes ou etapa de build. Node.js é necessário apenas para executar os testes.
 
 ## Controles
 
@@ -33,6 +33,7 @@ Não há dependências externas, CDN, instalação de pacotes ou etapa de build.
 | Olhar | Mouse |
 | Correr | Segurar `Shift` enquanto se move |
 | Pular | `Espaço` |
+| Interagir (pegar o capacete) | `E` |
 | Selecionar pistola / AKM / escopeta / sniper | `1` / `2` / `3` / `4` |
 | Alternar e equipar soco / katana | `Q` |
 | Executar golpe com o melee equipado | Botão esquerdo do mouse ou `F` |
@@ -63,7 +64,8 @@ zombots-uece-edition-2-the-revenge/
 │   ├── engine/
 │   │   ├── gl.js            # Contexto WebGL 1, profundidade e resolução
 │   │   ├── matrix.js        # Transformações, perspectiva e matriz de normais
-│   │   ├── shaders.js       # Cores sólidas e iluminação ambiente/difusa
+│   │   ├── shaders.js       # Phong por fragmento (ambiente + difusa + especular), luz spot móvel e textura
+│   │   ├── lighting.js      # Objeto de iluminação, conversão de espaço e envio dos uniforms
 │   │   ├── mesh.js          # Buffers, desenho e primitivas plano/cubo
 │   │   ├── obj_loader.js    # Geometria OBJ e material difuso MTL
 │   │   ├── input.js         # Teclado, mouse e Pointer Lock
@@ -74,6 +76,8 @@ zombots-uece-edition-2-the-revenge/
 │       ├── player.js        # Posição, movimento, corpo, colisão e vínculo da câmera
 │       ├── character_model.js # Corpo, braços e luvas facetados compartilhados
 │       ├── enemy.js         # Inimigos visuais: zumbi, robô e Zombot
+│       ├── helmet.js        # Capacete com lanterna: pickup, voo até a cabeça e luz móvel
+│       ├── lighting.js      # Predefinições de iluminação (jogo escuro e menu)
 │       └── level.js         # Geometria e colisores derivados dos dados do mapa
 ├── assets/
 │   ├── player/
@@ -85,6 +89,45 @@ zombots-uece-edition-2-the-revenge/
     ├── prototype.test.js    # Movimento, câmera, colisões, matrizes e OBJ/MTL
     └── level.test.js        # Altura do chão, calçadas, spawn e validação do mapa
 ```
+
+### Iluminação (modelo de Phong) e o capacete
+
+O jogo é **bem escuro**: a luz ambiente é quase nula (`GAME_AMBIENT` em `src/game/lighting.js`) e a iluminação vem da lanterna do capacete.
+
+**Shader (`src/engine/shaders.js`).** O fragment shader aplica Phong por fragmento:
+
+```text
+I = Ka·Ia  +  Σ [ Kd·(N·L) + Ks·(R·V)^n ] · atenuação · cone        R = reflect(-L, N)
+```
+
+- Ambiente (`u_ambient`), difusa (`N·L`) e **especular** (`R·V`, com `u_viewPos` e expoente `u_shininess`).
+- Uma luz pontual/**spot** móvel (`u_lightPos`, `u_lightDir`, `u_lightCone`, `u_lightAtten`) e uma luz direcional opcional (`u_sunDir`, usada só no fundo do menu).
+- Material por malha: `Mesh.specular` (Ks), `Mesh.shininess` (n) e `Mesh.emissive` (lente da lanterna e projéteis). Nos OBJ, Ks e Ns vêm do MTL.
+- A luz é calculada no espaço dos vértices. Na passagem FPS (armas e braços, desenhados com `u_view = identidade`), `applyLighting(..., camera.getViewMatrix())` converte a luz para o espaço da câmera.
+
+**Capacete (`src/game/helmet.js`).** O jogador começa no **2º andar do NC2A, na sala 015 (a primeira sala aberta)**, virado para um capacete jogado no chão. O capacete é construído à mão (cúpula, aba, lâmpada e lente emissiva).
+
+| Estado | Luz | Comportamento |
+| --- | --- | --- |
+| No chão | Omni, fraca, com falhas (lâmpada instável) | Ilumina só os arredores; a lente brilha. Perto dele aparece `E · Pegar o capacete`. |
+| Voando (0,55 s) | Interpolada | O capacete sobe em arco até a cabeça; posição, cone e intensidade da luz mudam suavemente. |
+| Na cabeça | Spot de 13° (interno) a 36° (externo) | A luz fica 17 cm acima dos olhos, aponta para onde o jogador olha (inclusive para cima e para baixo) e se move junto com ele. |
+
+A posição do capacete e o spawn ficam em `assets/map/test_level.json` (`helmet` e `spawn`). Para mudar de sala, edite esses valores (a sala precisa estar livre).
+
+**Ajustes rápidos.** Escuridão: `GAME_AMBIENT`. Alcance da lanterna: `ATTENUATION` e `WORN_LIGHT.color` em `helmet.js`. Abertura do cone: `WORN_LIGHT.innerCos/outerCos`. As armas recebem um ambiente extra e metade da intensidade da luz (`VIEWMODEL_AMBIENT`, `VIEWMODEL_LIGHT_SCALE`) para continuarem legíveis.
+
+### Requisitos do trabalho × onde estão
+
+| Requisito | Onde |
+| --- | --- |
+| WebGL puro, sem bibliotecas gráficas | `src/engine/gl.js` (só `getContext`); nenhuma dependência |
+| Câmera e projeção perspectiva | `src/engine/camera.js`, `Matrix4.perspective` |
+| Phong com luz móvel | `src/engine/shaders.js`, `src/engine/lighting.js`, `src/game/helmet.js` |
+| Objeto animado por transformações | inimigos (`enemy.js`), voo do capacete (`helmet.js`), braços e armas |
+| Objeto com textura / com cor sólida | inimigos (PNG via `map_Kd`) / cenário, armas e capacete |
+| Leitor próprio de OBJ | `src/engine/obj_loader.js` |
+| Câmera livre e teclado/mouse | `src/game/player.js`, `src/engine/input.js` |
 
 ### Menu principal
 
@@ -133,7 +176,7 @@ O colisor é independente da malha: uma AABB de aproximadamente **1,13 × 1,80 �
 - **Prédios com interior (`buildings`)**: o NC2A é gerado a partir da planta do térreo (`assets/map/test_level.json`, chave `buildings`). Cada prédio tem `floors`, `floorHeight`, pisos/lajes/cobertura e uma lista de `walls`. Uma parede é `"line": [x0, z0, x1, z1]` (paralela a um eixo) com `doors`: `{ "at": posição, "width", "state": "open" | "closed", "swing": ±1, "floors": [1, 2] }`. Portas abertas deixam um vão com a folha aberta; fechadas são um painel que colide. `"span": true` faz uma parede externa do chão ao teto. `slabHole` é o vão da laje do 2º andar (sobre a escada). Todos os andares repetem a mesma planta.
 - **Escada do NC2A**: 12 degraus de 0,28 (`Degrau 1…12`, superfícies) subindo para leste na sala ESCADAS, com o guarda-corpo do 2º andar como obstáculo. Os degraus ficam abaixo de `maxStep`, então o jogador sobe andando ou correndo.
 
-Formas: `"rect": [x0, z0, x1, z1]` ou `"circle": [cx, cz, raio]`. As cores e alturas ficam em `materials`; uma superfície com `"decal": true` (faixas) não altera a altura do chão. Onde duas superfícies se sobrepõem vale a mais alta, igual ao que aparece na tela. Para editar, altere o JSON e recarregue. Mantenha o spawn livre; o `y` dele é ajustado ao chão automaticamente.
+Formas: `"rect": [x0, z0, x1, z1]` ou `"circle": [cx, cz, raio]`. As cores e alturas ficam em `materials`; uma superfície com `"decal": true` (faixas) não altera a altura do chão. Onde duas superfícies se sobrepõem vale a mais alta, igual ao que aparece na tela. Para editar, altere o JSON e recarregue. O spawn atual está no 2º andar do NC2A (y = 3,55); mantenha-o livre, pois o `y` é ajustado ao chão automaticamente.
 Paredes e obstáculos geram malhas e colisores a partir das mesmas dimensões. Para editar o nível, altere o JSON e recarregue a página. Mantenha dimensões positivas, obstáculos apoiados no chão e o spawn livre dentro da arena. O chão é a referência do salto: a gravidade traz o jogador de volta a Y = 0; não há suporte a plataformas.
 
 ### Ajustar o personagem
@@ -144,7 +187,7 @@ Cada arma em `src/game/weapons.js` tem duas pegadas (`grips`) em coordenadas do 
 
 Os arquivos `assets/player/cube.obj` e `cube.mtl` permanecem apenas como fixtures de teste do loader; não são mais carregados pelo jogo.
 
-O carregador aceita índices positivos/negativos e triangula faces convexas. Se faltarem normais, calcula normais por triângulo. UVs presentes nos índices são ignorados; texturas, mapas de materiais e animações não são carregados.
+O carregador aceita índices positivos/negativos e triangula faces convexas. Se faltarem normais, calcula normais por triângulo. Lê `Kd` (cor), `Ks`/`Ns` (brilho especular e expoente de Phong, com `Ns` limitado a 128), `map_Kd` (textura PNG, uma por modelo) e os UVs (`vt`). Animações não são carregadas.
 
 ## Verificação
 
@@ -166,8 +209,7 @@ Para conferir a integração no navegador:
 
 ## Limites desta versão
 
-O protótipo inclui três inimigos: zumbi verde, robô azul e Zombot preto. Eles usam geometria construída manualmente, perseguem o jogador e possuem colisores AABB contra o jogador, paredes, obstáculos e outros inimigos. Eles param antes do contato e não possuem dano, vida ou golpes nesta etapa. Falhas de carregamento ou de WebGL são exibidas na tela; em caso de perda do contexto gráfico, recarregue a página.
-O protótipo inclui três inimigos: zumbi verde, robô azul e Zombot preto. Eles usam geometria construída manualmente, perseguem o jogador e possuem colisores AABB contra o jogador, paredes, obstáculos e outros inimigos. Eles param antes do contato e não possuem dano, vida ou golpes nesta etapa. Falhas de carregamento ou de WebGL são exibidas na tela; em caso de perda do contexto gráfico, recarregue a página.
+O protótipo inclui três inimigos: zumbi, robô e Zombot, modelos OBJ texturizados. Eles perseguem o jogador e possuem colisores AABB contra o jogador, paredes, obstáculos e outros inimigos. Eles param antes do contato e não possuem dano, vida ou golpes nesta etapa. Falhas de carregamento ou de WebGL são exibidas na tela; em caso de perda do contexto gráfico, recarregue a página.
 
 
 ### Armas e projéteis

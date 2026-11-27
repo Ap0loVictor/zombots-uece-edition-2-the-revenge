@@ -4,7 +4,8 @@
   "depth": 100,
   "wallHeight": 3,
   "wallThickness": 0.5,
-  "spawn": {"x": 0, "y": 0, "z": 10, "yaw": 0},
+  "spawn": {"x": -8.6, "y": 3.55, "z": -11.8, "yaw": 0.74},
+    "helmet": {"x": -10.6, "z": -14.0, "yaw": 2.2},
   "floorColor": [0.27, 0.55, 0.24, 1],
   "wallColor": [0.4, 0.5, 0.55, 1],
   "materials": {

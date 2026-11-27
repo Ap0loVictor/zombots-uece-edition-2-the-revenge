@@ -14,6 +14,7 @@ const game = new Game(document.getElementById('game-canvas'), {
     ammoCount: document.getElementById('ammo-count'),
     ammoCapacity: document.getElementById('ammo-capacity'),
     ammoProgress: document.getElementById('ammo-progress'),
+    prompt: document.getElementById('prompt'),
     ammoHint: document.getElementById('ammo-hint'),
 });
 

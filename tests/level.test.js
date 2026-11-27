@@ -49,11 +49,28 @@ test('prédios e troncos bloqueiam mesmo sobre a calçada', () => {
     assert.equal(level.colliders.some(box => intersectsAABB(player.collider, box)), false);
 });
 
-test('spawn está livre e sobre a calçada', () => {
+test('spawn está livre, no piso do 2º andar do NC2A (sala 015)', () => {
     const { x, z } = data.spawn;
     const player = new Player({ x, y: ground(x, z), z }, null);
     assert.equal(level.colliders.some(box => intersectsAABB(player.collider, box)), false);
-    assert.equal(ground(x, z), 0.15);
+    assert.ok(Math.abs(ground(x, z) - 3.55) < 1e-9);          // piso do 2º andar: 0,15 + 3,4
+    assert.ok(Math.abs(data.spawn.y - ground(x, z)) < 1e-9);
+    // Dentro da sala 015 (x entre as paredes leste e oeste, z entre a fachada sul e a divisória).
+    assert.ok(x > -12.3 && x < -7.8 && z > -15.08 && z < -10.8);
+});
+
+test('capacete está na mesma sala e fora de qualquer colisor', () => {
+    const { x, z } = data.helmet;
+    assert.ok(x > -12.3 && x < -7.8 && z > -15.08 && z < -10.8);
+    assert.ok(Math.abs(ground(x, z, data.spawn.y) - 3.55) < 1e-9);
+    const probe = new Player({ x, y: 3.55, z }, null);
+    assert.equal(level.colliders.some(box => intersectsAABB(probe.collider, box)), false);
+    // E o jogador nasce olhando para ele.
+    const yaw = data.spawn.yaw;
+    const forward = [-Math.sin(yaw), -Math.cos(yaw)];
+    const toHelmet = [x - data.spawn.x, z - data.spawn.z];
+    const length = Math.hypot(...toHelmet);
+    assert.ok((forward[0] * toHelmet[0] + forward[1] * toHelmet[1]) / length > 0.99);
 });
 
 test('árvores não nascem em pistas nem dentro de prédios', () => {

@@ -19,6 +19,7 @@ export class Level {
 
     constructor(gl, data) {
         this.spawn = data.spawn;
+        this.helmet = data.helmet ?? { x: data.spawn.x, z: data.spawn.z - 2, yaw: 0 };
         this.materials = data.materials ?? {};
         const { width, depth, wallHeight: height, wallThickness: thickness } = data;
 

@@ -10,6 +10,7 @@ export const CONTROL_GROUPS = [
             { keys: [['Mouse']], action: 'Olhar ao redor (câmera em primeira pessoa)' },
             { keys: [['Shift']], action: 'Correr (segure enquanto anda)' },
             { keys: [['Espaço']], action: 'Pular' },
+            { keys: [['E']], action: 'Interagir (pegar o capacete com a lanterna)' },
         ],
     },
     {
@@ -36,6 +37,7 @@ export const CONTROL_GROUPS = [
 ];
 
 export const CONTROL_TIPS = [
+    'O jogo é escuro: encontre o capacete caído na sala e pegue-o para ter uma lanterna sobre a cabeça.',
     'Olhe para baixo para ver o corpo e as botas do personagem.',
     'Ao clicar em Jogar, o navegador captura o mouse. Use Esc para soltá-lo.',
 ];

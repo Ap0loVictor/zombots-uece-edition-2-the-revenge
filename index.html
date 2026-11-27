@@ -32,6 +32,7 @@
         #ammo-progress { height: 100%; background: #f4d35e; transform: scaleX(0); transform-origin: left; }
         #ammo-hint { min-height: 12px; margin-top: 6px; color: #f4d35e; font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
         #ammo[data-low="true"] #ammo-count { color: #f4d35e; }
+        #prompt { position: absolute; left: 50%; bottom: 26%; transform: translateX(-50%); padding: 9px 18px; border-radius: 6px; background: #0b131bb3; color: #ffe9a8; font: 600 14px system-ui, sans-serif; letter-spacing: .06em; text-shadow: 0 1px 3px #000; }
         #crosshair { position: fixed; left: 50%; top: 50%; width: 5px; height: 5px; transform: translate(-50%, -50%); background: #fff; border-radius: 50%; box-shadow: 0 0 2px 1px #0008; pointer-events: none; }
 
         /* Botões e elementos comuns */
@@ -114,7 +115,8 @@
             <div class="ammo-reload-track" aria-hidden="true"><div id="ammo-progress"></div></div>
             <div id="ammo-hint"></div>
         </div>
-        <p class="controls" id="hud-hints">WASD / setas · mover &nbsp; Mouse · olhar &nbsp; Shift · correr &nbsp; Espaço · pular &nbsp; 1–4 · armas de fogo &nbsp; Q · soco / katana &nbsp; F · golpe rápido &nbsp; M · som &nbsp; Botão esquerdo · disparar / golpear &nbsp; R · recarregar &nbsp; P / Esc · pausar</p>
+        <div id="prompt" hidden role="status"></div>
+        <p class="controls" id="hud-hints">WASD / setas · mover &nbsp; Mouse · olhar &nbsp; Shift · correr &nbsp; Espaço · pular &nbsp; 1–4 · armas de fogo &nbsp; Q · soco / katana &nbsp; F · golpe rápido &nbsp; M · som &nbsp; Botão esquerdo · disparar / golpear &nbsp; R · recarregar &nbsp; E · interagir &nbsp; P / Esc · pausar</p>
     </div>
     <div id="crosshair" hidden aria-hidden="true"></div>
 

@@ -9,6 +9,9 @@ import { WeaponSystem } from './weapons.js';
 import { GameAudio } from '../engine/audio.js';
 import { Enemy } from './enemy.js';
 import { OBJLoader } from '../engine/obj_loader.js';
+import { applyLighting } from '../engine/lighting.js';
+import { Helmet } from './helmet.js';
+import { GAME_CLEAR_COLOR, MENU_CLEAR_COLOR, VIEWMODEL_AMBIENT, VIEWMODEL_LIGHT_SCALE, gameLighting, menuLighting } from './lighting.js';
 import { MenuCamera } from './menu_camera.js';
 import { MenuController } from './menu.js';
 import { DEFAULT_SETTINGS, fovRadians, loadSettings, lookSpeedFor, saveSettings } from './settings.js';
@@ -46,6 +49,9 @@ export class Game {
         this.groundHeightAt = (x, z, y) => this.level.groundHeight(x, z, y);
         this.player.position.y = this.groundHeightAt(this.player.position.x, this.player.position.z);
         this.player.syncCamera();
+        // O capacete fica no chão do mesmo andar do spawn.
+        const helmetSpot = level.helmet;
+        this.helmet = new Helmet(this.gl, helmetSpot, this.groundHeightAt(helmetSpot.x, helmetSpot.z, level.spawn.y));
         this.applySettings();
         const [weapons, zombieMesh, robotMesh, zombotMesh] = await Promise.all([
             WeaponSystem.load(this.gl),
@@ -54,6 +60,8 @@ export class Game {
             OBJLoader.load(this.gl, new URL('../../assets/enemies/zombot/zombot.obj', import.meta.url)),
         ]);
         this.weapons = weapons;
+        // Projéteis brilham no escuro.
+        this.weapons.bulletMesh.emissive = [1, 0.8, 0.35];
         this.enemyMeshes = { Zumbi: zombieMesh, 'Robô': robotMesh, Zombot: zombotMesh };
         this.audio = new GameAudio();
         this.applySettings();
@@ -120,6 +128,7 @@ export class Game {
             this.state = 'paused';
             if (this.ui.ammo) this.ui.ammo.hidden = true;
             this.ui.crosshair.hidden = true;
+            if (this.ui.prompt) this.ui.prompt.hidden = true;
             this.ui.status.textContent = 'PAUSADO';
             this.menu?.open({ paused: true });
         }
@@ -177,6 +186,8 @@ export class Game {
         // Ambos os lados recebem os mesmos AABBs, portanto ninguém atravessa o outro.
         this.player.update(this.input, dt, [...this.level.colliders, ...this.enemies.map(enemy => enemy.collider)], this.groundHeightAt);
         if (this.input.consumePress('KeyM')) this.audio.toggleMute();
+        this.helmet.update(dt, this.player, this.input);
+        this.updatePrompt();
         this.weapons.update(dt, this.input, this.player.camera);
         this.updateAmmoHUD();
         const held = this.weapons.showingMelee ? 'MELEE' : `${this.weapons.selected + 1} · ${this.weapons.equipped.name}`;
@@ -189,6 +200,18 @@ export class Game {
             ];
             enemy.update(dt, this.player.position, obstacles, this.groundHeightAt);
         }
+    }
+
+    // Dica na tela: guia o jogador até o capacete e confirma a lanterna.
+    updatePrompt() {
+        const prompt = this.ui.prompt;
+        if (!prompt) return;
+        const helmet = this.helmet;
+        let text = '';
+        if (helmet.state === 'floor') text = helmet.nearby ? 'E · Pegar o capacete' : 'Algo brilha no chão da sala…';
+        else if (helmet.sincePickup < 3.5) text = 'Lanterna do capacete ligada';
+        prompt.textContent = text;
+        prompt.hidden = !text || this.state !== 'playing';
     }
 
     updateAmmoHUD() {
@@ -211,18 +234,27 @@ export class Game {
     render(elapsed) {
         const gl = this.gl;
         resizeCanvas(gl);
+        const inMenu = this.state === 'ready';
+        gl.clearColor(...(inMenu ? MENU_CLEAR_COLOR : GAME_CLEAR_COLOR));
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.useProgram(this.programInfo.program);
-        const inMenu = this.state === 'ready';
         const camera = inMenu ? this.menuCamera.at(elapsed) : this.player.camera;
-        gl.uniformMatrix4fv(this.programInfo.uniforms.u_view, false, camera.getViewMatrix());
-        gl.uniformMatrix4fv(this.programInfo.uniforms.u_projection, false,
+        const uniforms = this.programInfo.uniforms;
+        gl.uniformMatrix4fv(uniforms.u_view, false, camera.getViewMatrix());
+        gl.uniformMatrix4fv(uniforms.u_projection, false,
             camera.getProjectionMatrix(gl.canvas.width / gl.canvas.height));
+        const lighting = inMenu ? menuLighting(camera) : gameLighting(camera, this.helmet, elapsed);
+        applyLighting(gl, uniforms, lighting);
         this.level.draw(this.programInfo);
         for (const enemy of this.enemies) enemy.draw(this.enemyMeshes[enemy.name], this.programInfo, elapsed);
-        if (inMenu) return; // sem corpo, armas ou projéteis de primeira pessoa no menu
+        if (inMenu) return; // sem capacete, corpo, armas ou projéteis de primeira pessoa no menu
+        this.helmet.draw(this.programInfo, camera);
         this.player.draw(this.programInfo);
         this.weapons.drawProjectiles(this.programInfo);
+        // Passagem FPS: armas e braços são desenhados em coordenadas de câmera (u_view = identidade),
+        // então a luz é convertida para o espaço da câmera e ganha um pouco de ambiente extra.
+        const light = { ...lighting.light, color: lighting.light.color.map(value => value * VIEWMODEL_LIGHT_SCALE) };
+        applyLighting(gl, uniforms, { ...lighting, ambient: VIEWMODEL_AMBIENT, light }, camera.getViewMatrix());
         this.weapons.drawWeapon(gl, this.programInfo);
     }
 
@@ -242,6 +274,7 @@ export class Game {
         this.input?.dispose();
         this.menu?.dispose();
         this.level?.dispose();
+        this.helmet?.dispose();
         this.player?.mesh.dispose();
         Object.values(this.enemyMeshes ?? {}).forEach(mesh => mesh.dispose());
         this.weapons?.dispose();

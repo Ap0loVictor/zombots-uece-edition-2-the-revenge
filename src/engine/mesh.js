@@ -11,6 +11,10 @@ export class Mesh {
         this.texture = null;
         this.modelMatrix = Matrix4.identity();
         this.color = [1, 1, 1, 1];
+        // Material de Phong: Ks (escalar), expoente n e cor emissiva.
+        this.specular = 0.15;
+        this.shininess = 24;
+        this.emissive = [0, 0, 0];
     }
 
     createBuffer(data) {
@@ -26,6 +30,9 @@ export class Mesh {
         gl.uniformMatrix4fv(uniforms.u_model, false, this.modelMatrix);
         gl.uniformMatrix3fv(uniforms.u_normalMatrix, false, Matrix4.normalMatrix(this.modelMatrix));
         gl.uniform4fv(uniforms.u_color, this.color);
+        if (uniforms.u_specular) gl.uniform1f(uniforms.u_specular, this.specular);
+        if (uniforms.u_shininess) gl.uniform1f(uniforms.u_shininess, this.shininess);
+        if (uniforms.u_emissive) gl.uniform3fv(uniforms.u_emissive, this.emissive);
         gl.uniform1i(uniforms.u_useVertexColors, this.colorBuffer ? 1 : 0);
         if (uniforms.u_useTexture) gl.uniform1i(uniforms.u_useTexture, this.texture ? 1 : 0);
         if (this.texture) {
@@ -84,13 +91,15 @@ export class Mesh {
     }
 
     // Esfera de raio 1 centrada na origem (escale para obter elipsoides).
-    static sphere(gl, rings = 10, segments = 14) {
+    // hemisphere = true gera só a metade de cima (y ≥ 0), aberta embaixo.
+    static sphere(gl, rings = 10, segments = 14, hemisphere = false) {
         const positions = [], normals = [];
+        const limit = hemisphere ? Math.floor(rings / 2) : rings;
         const point = (ring, segment) => {
             const phi = (ring / rings) * Math.PI, theta = (segment / segments) * 2 * Math.PI;
             return [Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta)];
         };
-        for (let r = 0; r < rings; r++) {
+        for (let r = 0; r < limit; r++) {
             for (let s = 0; s < segments; s++) {
                 const a = point(r, s), b = point(r + 1, s), c = point(r + 1, s + 1), d = point(r, s + 1);
                 if (r > 0) Mesh.pushTriangle(positions, normals, [a, b, d], [a, b, d]);

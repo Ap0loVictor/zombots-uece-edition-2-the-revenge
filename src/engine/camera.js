@@ -22,6 +22,11 @@ export class FPSCamera {
             Matrix4.translation(-x, -y, -z));
     }
 
+    // Rotação câmera→mundo (mesma convenção usada para posicionar armas e tiros).
+    getRotationMatrix() {
+        return Matrix4.multiply(Matrix4.rotationY(this.yaw), Matrix4.rotationX(this.pitch));
+    }
+
     getProjectionMatrix(aspect) {
         return Matrix4.perspective(this.fov, aspect, 0.05, 150);
     }
